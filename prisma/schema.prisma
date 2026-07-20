@@ -1,0 +1,359 @@
+// prisma/schema.prisma
+// Enterprise-Grade PostgreSQL Database Schema for Yelp India
+// Designed from Day 1 for multi-category expansion with Place & Category architecture.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+enum Role {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// =============================================================================
+// Auth.js & User Models
+// =============================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          Role      @default(USER)
+  bio           String?
+  city          String?
+  
+  // Timestamps & Soft Delete
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  accounts      Account[]
+  sessions      Session[]
+  reviews       Review[]
+  photos        Photo[]
+  favorites     Favorite[]
+  reviewLikes   ReviewLike[]
+  reports       Report[]
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([deletedAt])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// =============================================================================
+// Core Business Entities: Categories & Places (Restaurants)
+// =============================================================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  icon        String?
+
+  // Timestamps & Soft Delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  places      Place[]
+
+  @@index([slug])
+  @@index([deletedAt])
+  @@map("categories")
+}
+
+model Place {
+  id            String   @id @default(uuid())
+  name          String
+  slug          String   @unique
+  description   String?  @db.Text
+  address       String
+  city          String
+  state         String
+  country       String   @default("India")
+  postalCode    String?
+  latitude      Float?
+  longitude     Float?
+  
+  priceLevel    Int?     @default(2) // 1=Budget, 2=Moderate, 3=Fine Dining, 4=Luxury
+  phone         String?
+  email         String?
+  website       String?
+
+  // Computed / Aggregated metrics
+  averageRating Float    @default(0.0)
+  reviewCount   Int      @default(0)
+
+  // Status flags
+  isVerified    Boolean  @default(false)
+  isFeatured    Boolean  @default(false)
+
+  // Category relation
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Timestamps & Soft Delete
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  // Relations
+  reviews       Review[]
+  photos        Photo[]
+  favorites     Favorite[]
+  openingHours  OpeningHour[]
+  amenities     PlaceAmenity[]
+  reports       Report[]
+
+  @@index([city])
+  @@index([categoryId])
+  @@index([slug])
+  @@index([averageRating])
+  @@index([isFeatured])
+  @@index([deletedAt])
+  @@map("places")
+}
+
+model OpeningHour {
+  id        String    @id @default(uuid())
+  placeId   String
+  dayOfWeek DayOfWeek
+  openTime  String    // HH:MM e.g. "11:00"
+  closeTime String    // HH:MM e.g. "23:00"
+  isClosed  Boolean   @default(false)
+
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([placeId, dayOfWeek])
+  @@index([placeId])
+  @@map("opening_hours")
+}
+
+model Amenity {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  icon        String?
+
+  places      PlaceAmenity[]
+
+  @@map("amenities")
+}
+
+model PlaceAmenity {
+  placeId   String
+  amenityId String
+
+  place   Place   @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  amenity Amenity @relation(fields: [amenityId], references: [id], onDelete: Cascade)
+
+  @@id([placeId, amenityId])
+  @@index([placeId])
+  @@index([amenityId])
+  @@map("place_amenities")
+}
+
+// =============================================================================
+// User Engagement: Reviews, Photos, Favorites, Likes & Reports
+// =============================================================================
+
+model Review {
+  id          String   @id @default(uuid())
+  userId      String
+  placeId     String
+  rating      Int      // 1 to 5
+  content     String   @db.Text
+  isApproved  Boolean  @default(true)
+  likeCount   Int      @default(0)
+
+  // Timestamps & Soft Delete
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place       Place        @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  photos      Photo[]
+  likes       ReviewLike[]
+  reports     Report[]
+
+  @@index([placeId])
+  @@index([userId])
+  @@index([rating])
+  @@index([createdAt])
+  @@index([deletedAt])
+  @@map("reviews")
+}
+
+model Photo {
+  id        String   @id @default(uuid())
+  url       String
+  publicId  String?  // Cloudinary public asset ID
+  caption   String?
+  isPrimary Boolean  @default(false)
+
+  userId    String
+  placeId   String?
+  reviewId  String?
+
+  // Timestamps & Soft Delete
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place  Place?  @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  review Review? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([placeId])
+  @@index([reviewId])
+  @@index([userId])
+  @@index([deletedAt])
+  @@map("photos")
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  placeId   String
+  createdAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place Place @relation(fields: [placeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, placeId])
+  @@index([userId])
+  @@index([placeId])
+  @@map("favorites")
+}
+
+model ReviewLike {
+  id        String   @id @default(uuid())
+  userId    String
+  reviewId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@index([userId])
+  @@index([reviewId])
+  @@map("review_likes")
+}
+
+model Report {
+  id          String       @id @default(uuid())
+  userId      String
+  placeId     String?
+  reviewId    String?
+  reason      String       @db.Text
+  status      ReportStatus @default(PENDING)
+
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  place  Place?  @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  review Review? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("reports")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  targetType String
+  targetId   String
+  metadata   Json?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}

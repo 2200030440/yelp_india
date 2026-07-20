@@ -1,26 +1,58 @@
 {
-  "name": "yelp_india",
+  "name": "yelp-india",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "type-check": "tsc --noEmit",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:prod": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "db:seed": "ts-node --project tsconfig.json prisma/seed/index.ts",
+    "db:reset": "prisma migrate reset"
   },
   "dependencies": {
+    "@auth/prisma-adapter": "^2.9.1",
+    "@hookform/resolvers": "^5.1.1",
+    "@prisma/client": "^6.12.0",
+    "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-query-devtools": "^5.83.0",
+    "@types/bcryptjs": "^2.4.6",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.1",
+    "cloudinary": "^2.6.1",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.4",
+    "lucide-react": "^0.525.0",
     "next": "16.2.10",
+    "next-auth": "^5.0.0-beta.29",
+    "next-cloudinary": "^6.0.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "react-hook-form": "^7.57.0",
+    "resend": "^4.6.0",
+    "tailwind-merge": "^3.3.1",
+    "zod": "^3.24.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/leaflet": "^1.9.18",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
+    "prettier": "^3.5.3",
+    "prettier-plugin-tailwindcss": "^0.6.12",
+    "prisma": "^6.12.0",
     "typescript": "^5"
   }
 }

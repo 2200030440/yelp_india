@@ -1,26 +1,162 @@
+/* app/globals.css
+ * Global styles for Yelp India.
+ * Using Tailwind CSS v4's new @import syntax.
+ * Design tokens are defined here and used throughout the app.
+ * Phase 4 (Design System) will expand this significantly.
+ */
+
 @import "tailwindcss";
 
+/* =====================================================================
+ * Design Tokens — CSS Custom Properties
+ * All colors, spacing, and typography tokens are defined here.
+ * This makes theme switching (dark mode) a single-source change.
+ * ===================================================================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand colors */
+  --brand-primary: 220 38 38;      /* red-600 — Yelp-inspired brand red */
+  --brand-primary-hover: 185 28 28; /* red-700 */
+  --brand-secondary: 234 88 12;    /* orange-600 — warm accent */
+
+  /* Semantic colors — light mode */
+  --background: 255 255 255;       /* white */
+  --foreground: 9 9 11;            /* zinc-950 */
+  --card: 255 255 255;
+  --card-foreground: 9 9 11;
+  --muted: 244 244 245;            /* zinc-100 */
+  --muted-foreground: 113 113 122; /* zinc-500 */
+  --border: 228 228 231;           /* zinc-200 */
+  --input: 228 228 231;
+  --ring: 220 38 38;               /* brand primary for focus rings */
+
+  /* Success / Warning / Error */
+  --success: 22 163 74;            /* green-600 */
+  --warning: 202 138 4;            /* yellow-600 */
+  --destructive: 220 38 38;        /* red-600 */
+
+  /* Typography */
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* Radius */
+  --radius: 0.5rem;                /* 8px — base border radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Dark mode */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 9 9 11;          /* zinc-950 */
+    --foreground: 250 250 250;     /* zinc-50 */
+    --card: 24 24 27;              /* zinc-900 */
+    --card-foreground: 250 250 250;
+    --muted: 39 39 42;             /* zinc-800 */
+    --muted-foreground: 161 161 170; /* zinc-400 */
+    --border: 39 39 42;            /* zinc-800 */
+    --input: 39 39 42;
   }
 }
 
+/* =====================================================================
+ * Tailwind v4 Theme Registration
+ * Maps our CSS variables to Tailwind utility classes.
+ * ===================================================================== */
+@theme inline {
+  --color-background: rgb(var(--background));
+  --color-foreground: rgb(var(--foreground));
+  --color-card: rgb(var(--card));
+  --color-card-foreground: rgb(var(--card-foreground));
+  --color-muted: rgb(var(--muted));
+  --color-muted-foreground: rgb(var(--muted-foreground));
+  --color-border: rgb(var(--border));
+  --color-input: rgb(var(--input));
+  --color-brand: rgb(var(--brand-primary));
+  --color-brand-hover: rgb(var(--brand-primary-hover));
+  --color-brand-secondary: rgb(var(--brand-secondary));
+  --color-success: rgb(var(--success));
+  --color-warning: rgb(var(--warning));
+  --color-destructive: rgb(var(--destructive));
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --radius-full: var(--radius-full);
+}
+
+/* =====================================================================
+ * Base Reset & Typography
+ * ===================================================================== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-color: rgb(var(--border));
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: rgb(var(--background));
+  color: rgb(var(--foreground));
+  font-family: var(--font-sans);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Focus visible — accessibility */
+:focus-visible {
+  outline: 2px solid rgb(var(--ring));
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Remove focus ring for mouse users */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* =====================================================================
+ * Utility Classes (will be expanded in Phase 4)
+ * ===================================================================== */
+
+/* Container with max-width and responsive padding */
+.container {
+  width: 100%;
+  max-width: 1280px;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .container { padding-inline: 1.5rem; }
+}
+
+@media (min-width: 1024px) {
+  .container { padding-inline: 2rem; }
+}
+
+/* Skeleton loader animation */
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.skeleton {
+  background-color: rgb(var(--muted));
+  border-radius: var(--radius);
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
