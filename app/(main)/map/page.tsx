@@ -27,10 +27,10 @@ const PlacesMap = dynamic(
   { ssr: false, loading: () => <MapSkeleton /> },
 );
 
-// ── Mock Data ─────────────────────────────────────────────────────────────
-// In production these would come from the DB via a server action or API call.
+// ── Types ─────────────────────────────────────────────────────────────────
 
-const MOCK_PLACES: PlacePin[] = [
+// Initial seed from DB (server places)
+const INITIAL_PLACES: PlacePin[] = [
   {
     id: "1",
     name: "Bukhara - ITC Maurya",
@@ -309,7 +309,7 @@ function PlaceListCard({
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function MapPage() {
-  const [places, setPlaces] = useState<PlacePin[]>(MOCK_PLACES);
+  const [places, setPlaces] = useState<PlacePin[]>(INITIAL_PLACES);
   const [activePlaceId, setActivePlaceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -317,7 +317,9 @@ export default function MapPage() {
     latitude: number;
     longitude: number;
   } | null>(null);
+  const [nearbyStatus, setNearbyStatus] = useState<"idle" | "locating" | "fetching" | "done" | "error">("idle");
 
+  // Load DB-seeded places on mount
   useEffect(() => {
     async function fetchMapPlaces() {
       try {
@@ -346,40 +348,56 @@ export default function MapPage() {
     fetchMapPlaces();
   }, []);
 
-  const [isLocating, setIsLocating] = useState(false);
-
-  const fetchOsmNearbyRestaurants = async (lat: number, lng: number) => {
+  // ── Google Places Nearby Search (real live data) ─────────────────────────
+  const fetchGoogleNearbyRestaurants = async (lat: number, lng: number) => {
+    setNearbyStatus("fetching");
     try {
-      const query = `[out:json];node(around:8000,${lat},${lng})[amenity=restaurant];out 25;`;
-      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-      const res = await fetch(url);
-      if (!res.ok) return;
+      const res = await fetch(
+        `/api/places/nearby?lat=${lat}&lng=${lng}&radius=5000&keyword=restaurant`,
+      );
+      if (!res.ok) throw new Error("API error");
       const data = await res.json();
-      const osmPlaces: PlacePin[] = (data.elements || [])
-        .filter((el: { tags?: { name?: string }; lat: number; lon: number }) => el.tags?.name)
-        .map((el: { id: number; tags?: { name?: string; cuisine?: string; "addr:city"?: string; "addr:street"?: string }; lat: number; lon: number }) => ({
-          id: `osm-${el.id}`,
-          name: el.tags?.name || "Local Restaurant",
-          slug: `osm-${el.id}`,
-          latitude: el.lat,
-          longitude: el.lon,
-          city: el.tags?.["addr:city"] || "Nearby",
-          averageRating: 4.5,
-          reviewCount: Math.floor(Math.random() * 40) + 5,
-          priceLevel: 2,
-          category: el.tags?.cuisine || "Local Restaurant",
-          primaryPhotoUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=60",
-        }));
 
-      if (osmPlaces.length > 0) {
+      const googlePlaces: PlacePin[] = (data.places ?? []).map(
+        (p: {
+          id: string;
+          name: string;
+          slug: string;
+          latitude: number;
+          longitude: number;
+          city: string;
+          averageRating: number;
+          reviewCount: number;
+          priceLevel: number;
+          category: string;
+          primaryPhotoUrl: string;
+          isOpen?: boolean;
+        }) => ({
+          id: p.id,
+          name: p.name,
+          slug: p.slug,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          city: p.city,
+          averageRating: p.averageRating,
+          reviewCount: p.reviewCount,
+          priceLevel: p.priceLevel,
+          category: p.category,
+          primaryPhotoUrl: p.primaryPhotoUrl,
+        }),
+      );
+
+      if (googlePlaces.length > 0) {
         setPlaces((prev) => {
-          const existingSlugs = new Set(prev.map((p) => p.slug));
-          const newUnique = osmPlaces.filter((p) => !existingSlugs.has(p.slug));
-          return [...prev, ...newUnique];
+          const existingIds = new Set(prev.map((p) => p.id));
+          const newUnique = googlePlaces.filter((p) => !existingIds.has(p.id));
+          return [...newUnique, ...prev];
         });
       }
+      setNearbyStatus("done");
     } catch (err) {
-      console.warn("Failed to fetch live OSM nearby places", err);
+      console.warn("Google Nearby failed:", err);
+      setNearbyStatus("error");
     }
   };
 
@@ -388,20 +406,20 @@ export default function MapPage() {
       alert("Geolocation is not supported by your browser");
       return;
     }
-    setIsLocating(true);
+    setNearbyStatus("locating");
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setUserLocation({ latitude: lat, longitude: lng });
-        fetchOsmNearbyRestaurants(lat, lng).finally(() => setIsLocating(false));
+        fetchGoogleNearbyRestaurants(lat, lng);
       },
       (err) => {
-        setIsLocating(false);
+        setNearbyStatus("error");
         console.warn("Geolocation error:", err.message);
         alert("Unable to retrieve your location. Please allow location access in your browser.");
       },
-      { enableHighAccuracy: true, timeout: 10000 },
+      { enableHighAccuracy: true, timeout: 12000 },
     );
   };
 
@@ -484,11 +502,20 @@ export default function MapPage() {
           </div>
           <button
             onClick={handleLocateUser}
-            disabled={isLocating}
+            disabled={nearbyStatus === "locating" || nearbyStatus === "fetching"}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 py-2 text-xs font-bold transition-colors disabled:opacity-60"
           >
-            {isLocating ? "📡 Searching Nearby Restaurants…" : "📍 Find Restaurants Near Me"}
+            {nearbyStatus === "locating" && "📡 Getting your location…"}
+            {nearbyStatus === "fetching" && "🔍 Loading Google restaurants…"}
+            {nearbyStatus === "done" && "✅ Restaurants loaded! Search again?"}
+            {nearbyStatus === "error" && "⚠️ Failed — try again"}
+            {nearbyStatus === "idle" && "📍 Find Restaurants Near Me (Google)"}
           </button>
+          {nearbyStatus === "done" && (
+            <p className="text-center text-[10px] text-emerald-600 font-semibold">
+              Showing live Google Places near you. Tap any to review!
+            </p>
+          )}
         </div>
 
         {/* Results count */}
@@ -531,9 +558,12 @@ export default function MapPage() {
         </div>
 
         {/* Sidebar footer */}
-        <div className="border-t border-zinc-100 p-3">
+        <div className="border-t border-zinc-100 p-3 flex flex-col gap-1">
           <p className="text-center text-[10px] text-zinc-400">
-            Map data © OpenStreetMap contributors
+            Powered by Google Places API · Map © OpenStreetMap
+          </p>
+          <p className="text-center text-[10px] text-zinc-400">
+            Tap a restaurant to see details & write a review
           </p>
         </div>
       </aside>
