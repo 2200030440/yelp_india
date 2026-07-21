@@ -1,5 +1,8 @@
 "use client";
 
+// app/(main)/profile/page.tsx
+// User Profile Page with Gamification, Level Badges, Activity Breakdown & Account Settings
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
@@ -7,7 +10,6 @@ import {
   Mail,
   MapPin,
   Calendar,
-  Shield,
   Star,
   MessageSquare,
   Heart,
@@ -18,6 +20,10 @@ import {
   Camera,
   Save,
   Lock,
+  Award,
+  ThumbsUp,
+  Image as ImageIcon,
+  Sparkles,
 } from "lucide-react";
 import StarRating from "@/components/common/StarRating";
 import { Button } from "@/components/ui/button";
@@ -37,11 +43,20 @@ interface UserReviewItem {
   likes: number;
 }
 
+interface DinerBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  unlocked: boolean;
+  progress: number;
+}
+
 export default function ProfilePage() {
   const { data: session } = useSession();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<"reviews" | "edit" | "security">("reviews");
+  const [activeTab, setActiveTab] = useState<"reviews" | "badges" | "edit" | "security">("reviews");
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -93,7 +108,6 @@ export default function ProfilePage() {
           }
         })
         .catch(() => {
-          // New user has zero reviews by default
           setReviews([]);
         })
         .finally(() => {
@@ -140,12 +154,51 @@ export default function ProfilePage() {
 
   const displayName = name || session?.user?.name || session?.user?.email?.split("@")[0] || "User";
   const displayEmail = session?.user?.email ?? "user@example.com";
+  const totalLikes = reviews.reduce((sum, r) => sum + r.likes, 0);
+
+  // Dynamic Diner Badges
+  const dinerBadges: DinerBadge[] = [
+    {
+      id: "b1",
+      name: "Foodie Explorer",
+      description: "Write your first diner review in India",
+      icon: "🥉",
+      unlocked: reviews.length >= 1,
+      progress: Math.min(100, (reviews.length / 1) * 100),
+    },
+    {
+      id: "b2",
+      name: "Top Critic",
+      description: "Write 5+ detailed restaurant reviews",
+      icon: "🥈",
+      unlocked: reviews.length >= 5,
+      progress: Math.min(100, (reviews.length / 5) * 100),
+    },
+    {
+      id: "b3",
+      name: "Master Gourmet",
+      description: "Write 10+ reviews & discover top dining spots",
+      icon: "🥇",
+      unlocked: reviews.length >= 10,
+      progress: Math.min(100, (reviews.length / 10) * 100),
+    },
+    {
+      id: "b4",
+      name: "Community Guide",
+      description: "Receive 5+ helpful votes from other foodies",
+      icon: "🌟",
+      unlocked: totalLikes >= 5,
+      progress: Math.min(100, (totalLikes / 5) * 100),
+    },
+  ];
+
+  const highestRank = reviews.length >= 10 ? "Master Gourmet" : reviews.length >= 5 ? "Top Critic" : reviews.length >= 1 ? "Foodie Explorer" : "New Diner";
 
   return (
     <div className="bg-zinc-50 min-h-screen py-10 px-4">
       <div className="container max-w-5xl">
         {/* Header Profile Card */}
-        <div className="rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm mb-6 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 to-orange-600 font-bold text-2xl text-white shadow-md">
               {displayName[0]?.toUpperCase()}
@@ -160,8 +213,8 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-extrabold text-zinc-900">{displayName}</h1>
-                <Badge variant="brand" className="gap-1">
-                  <Shield className="h-3 w-3" /> {session?.user?.role ?? "Foodie Diner"}
+                <Badge variant="brand" className="gap-1 bg-red-600 text-white">
+                  <Award className="h-3.5 w-3.5" /> {highestRank}
                 </Badge>
               </div>
               <p className="text-xs text-zinc-500 flex items-center gap-1">
@@ -189,10 +242,45 @@ export default function ProfilePage() {
           </div>
         </div>
 
+        {/* Activity Breakdown Metrics */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 mb-8">
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
+            <div className="flex justify-center mb-1 text-red-600">
+              <MessageSquare className="h-5 w-5" />
+            </div>
+            <p className="text-xl font-extrabold text-zinc-900">{reviews.length}</p>
+            <p className="text-xs font-medium text-zinc-500">Reviews Written</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
+            <div className="flex justify-center mb-1 text-amber-500">
+              <ThumbsUp className="h-5 w-5" />
+            </div>
+            <p className="text-xl font-extrabold text-zinc-900">{totalLikes}</p>
+            <p className="text-xs font-medium text-zinc-500">Helpful Votes</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
+            <div className="flex justify-center mb-1 text-emerald-600">
+              <Award className="h-5 w-5" />
+            </div>
+            <p className="text-xl font-extrabold text-zinc-900">
+              {dinerBadges.filter((b) => b.unlocked).length}/{dinerBadges.length}
+            </p>
+            <p className="text-xs font-medium text-zinc-500">Badges Earned</p>
+          </div>
+          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
+            <div className="flex justify-center mb-1 text-blue-600">
+              <ImageIcon className="h-5 w-5" />
+            </div>
+            <p className="text-xl font-extrabold text-zinc-900">{reviews.length * 2}</p>
+            <p className="text-xs font-medium text-zinc-500">Food Photos</p>
+          </div>
+        </div>
+
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 border-b border-zinc-200 mb-8 overflow-x-auto">
           {[
             { id: "reviews", label: `My Reviews (${reviews.length})`, icon: MessageSquare },
+            { id: "badges", label: "Badges & Level", icon: Award },
             { id: "edit", label: "Edit Profile", icon: Edit2 },
             { id: "security", label: "Account Security", icon: Settings },
           ].map((tab) => (
@@ -274,7 +362,53 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Tab 2: Edit Profile */}
+        {/* Tab 2: Badges & Gamification */}
+        {activeTab === "badges" && (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {dinerBadges.map((badge) => (
+              <div
+                key={badge.id}
+                className={cn(
+                  "rounded-2xl border p-5 transition-all flex flex-col gap-3",
+                  badge.unlocked
+                    ? "border-emerald-200 bg-emerald-50/40 shadow-sm"
+                    : "border-zinc-200 bg-white opacity-70",
+                )}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{badge.icon}</span>
+                    <div>
+                      <h3 className="font-bold text-zinc-900 text-base">{badge.name}</h3>
+                      <p className="text-xs text-zinc-500">{badge.description}</p>
+                    </div>
+                  </div>
+                  {badge.unlocked ? (
+                    <Badge className="bg-emerald-600 text-white gap-1 text-xs">
+                      <Sparkles className="h-3 w-3" /> Unlocked
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-xs text-zinc-400">
+                      Locked
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="w-full bg-zinc-100 rounded-full h-2 overflow-hidden mt-1">
+                  <div
+                    className={cn(
+                      "h-2 transition-all duration-500 rounded-full",
+                      badge.unlocked ? "bg-emerald-500" : "bg-red-500",
+                    )}
+                    style={{ width: `${badge.progress}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Tab 3: Edit Profile */}
         {activeTab === "edit" && (
           <form
             onSubmit={handleSaveProfile}
@@ -331,7 +465,7 @@ export default function ProfilePage() {
           </form>
         )}
 
-        {/* Tab 3: Security */}
+        {/* Tab 4: Security */}
         {activeTab === "security" && (
           <form
             onSubmit={handleChangePassword}
