@@ -125,3 +125,113 @@ export async function getPlacesAction(
     };
   }
 }
+
+export interface SyncPlaceInput {
+  name: string;
+  slug?: string;
+  description?: string;
+  address: string;
+  city: string;
+  state?: string;
+  latitude: number;
+  longitude: number;
+  priceLevel?: number;
+  phone?: string;
+  website?: string;
+  photoUrl?: string;
+  categorySlug?: string;
+  googlePlaceId?: string;
+}
+
+/**
+ * Server Action: Sync / Upsert a live Google or nearby place into Supabase DB.
+ * Ensures that whenever a user views or reviews a restaurant found on Google Maps / GPS,
+ * it is registered in Supabase so reviews are permanently saved and shown to everyone.
+ */
+export async function syncPlaceAction(input: SyncPlaceInput) {
+  try {
+    const rawSlug = input.slug || input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const slug = `${rawSlug}-${Math.abs(Math.round(input.latitude * 100))}`;
+
+    // Check if place already exists
+    const existing = await prisma.place.findFirst({
+      where: {
+        OR: [
+          { slug: rawSlug },
+          { slug: slug },
+          { name: { equals: input.name, mode: "insensitive" }, city: { equals: input.city, mode: "insensitive" } },
+        ],
+      },
+      include: {
+        category: { select: { id: true, name: true, slug: true } },
+        photos: { where: { isPrimary: true }, take: 1 },
+      },
+    });
+
+    if (existing) {
+      return { success: true, place: existing };
+    }
+
+    // Find or fallback Category
+    let category = await prisma.category.findFirst({
+      where: { slug: input.categorySlug || "north-indian" },
+    });
+
+    if (!category) {
+      category = await prisma.category.findFirst();
+    }
+
+    if (!category) {
+      category = await prisma.category.create({
+        data: {
+          name: "Restaurants",
+          slug: "restaurants",
+          description: "Dining & Food",
+        },
+      });
+    }
+
+    // Create new Place record in Supabase
+    const created = await prisma.place.create({
+      data: {
+        name: input.name,
+        slug: slug,
+        description: input.description || `Authentic dining experience in ${input.city}.`,
+        address: input.address,
+        city: input.city,
+        state: input.state || "India",
+        country: "India",
+        latitude: input.latitude,
+        longitude: input.longitude,
+        priceLevel: input.priceLevel || 2,
+        phone: input.phone || null,
+        website: input.website || null,
+        isVerified: true,
+        isFeatured: false,
+        averageRating: 0.0,
+        reviewCount: 0,
+        categoryId: category.id,
+      },
+    });
+
+    // Add Primary Photo if provided
+    if (input.photoUrl) {
+      const adminUser = await prisma.user.findFirst({ where: { role: "ADMIN" } });
+      if (adminUser) {
+        await prisma.photo.create({
+          data: {
+            url: input.photoUrl,
+            isPrimary: true,
+            placeId: created.id,
+            userId: adminUser.id,
+          },
+        });
+      }
+    }
+
+    return { success: true, place: created };
+  } catch (error) {
+    console.error("Sync place error:", error);
+    return { success: false, error: "Failed to sync restaurant into database." };
+  }
+}
