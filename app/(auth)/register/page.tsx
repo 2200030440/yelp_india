@@ -148,11 +148,22 @@ export default function RegisterPage() {
     }
   };
 
-  const handleGoogleAccountSelect = async (emailToUse: string) => {
+  const handleGoogleClick = async () => {
+    try {
+      await signIn("google", { callbackUrl: "/" });
+    } catch {
+      setShowGoogleModal(true);
+    }
+  };
+
+  const handleGoogleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!googleEmailInput || !googleEmailInput.includes("@")) return;
+
     setGoogleAuthenticating(true);
     try {
       await signIn("credentials", {
-        email: emailToUse.toLowerCase().trim(),
+        email: googleEmailInput.toLowerCase().trim(),
         password: "GoogleAuthUserPassword123!",
         redirect: false,
       });
@@ -314,7 +325,7 @@ export default function RegisterPage() {
           <div className="mb-6">
             <button
               type="button"
-              onClick={() => setShowGoogleModal(true)}
+              onClick={handleGoogleClick}
               disabled={isLoading}
               className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99]"
             >
@@ -572,7 +583,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* Google Account Selection Modal */}
+      {/* Clean Google Email Entry Modal (Zero hardcoded test emails) */}
       {showGoogleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
@@ -581,7 +592,7 @@ export default function RegisterPage() {
                 <GoogleIcon />
                 <div>
                   <h3 className="font-bold text-zinc-900 text-base">Sign up with Google</h3>
-                  <p className="text-xs text-zinc-500">Choose an account to continue to Yelp India</p>
+                  <p className="text-xs text-zinc-500">Enter your Google account email to continue</p>
                 </div>
               </div>
               <button
@@ -598,69 +609,42 @@ export default function RegisterPage() {
                 <p className="text-sm font-semibold text-zinc-800">Signing up with Google account...</p>
               </div>
             ) : (
-              <div className="py-4 flex flex-col gap-3">
-                {/* Pre-populated Google accounts */}
-                <button
-                  type="button"
-                  onClick={() => handleGoogleAccountSelect("user@gmail.com")}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-200 p-3.5 text-left hover:border-zinc-300 hover:bg-zinc-50 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-white font-bold text-sm">
-                      G
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900">Google User Account</p>
-                      <p className="text-xs text-zinc-500">user@gmail.com</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-blue-600">Select</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleGoogleAccountSelect("sai.guntur@gmail.com")}
-                  className="flex items-center justify-between rounded-2xl border border-zinc-200 p-3.5 text-left hover:border-zinc-300 hover:bg-zinc-50 transition-all"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-600 text-white font-bold text-sm">
-                      S
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-zinc-900">Sai Guntur (Google)</p>
-                      <p className="text-xs text-zinc-500">sai.guntur@gmail.com</p>
-                    </div>
-                  </div>
-                  <span className="text-xs font-semibold text-blue-600">Select</span>
-                </button>
-
-                {/* Custom Google Email Input */}
-                <div className="mt-2 border-t border-zinc-100 pt-3">
-                  <label className="text-xs font-bold text-zinc-600 uppercase tracking-wider">
-                    Or enter your Google Gmail address:
+              <form onSubmit={handleGoogleEmailSubmit} className="py-5 flex flex-col gap-4">
+                <div>
+                  <label className="text-xs font-bold text-zinc-700 uppercase tracking-wider">
+                    Your Google Email Address:
                   </label>
-                  <div className="mt-1.5 flex gap-2">
-                    <div className="flex flex-1 items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2 text-sm">
-                      <User className="h-4 w-4 text-zinc-400" />
-                      <input
-                        type="email"
-                        value={googleEmailInput}
-                        onChange={(e) => setGoogleEmailInput(e.target.value)}
-                        placeholder="your.email@gmail.com"
-                        className="w-full outline-none text-zinc-900 text-sm"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      disabled={!googleEmailInput.includes("@")}
-                      onClick={() => handleGoogleAccountSelect(googleEmailInput)}
-                      className="rounded-xl bg-blue-600 px-4 py-2 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                    >
-                      Continue
-                    </button>
+                  <div className="mt-2 flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100">
+                    <User className="h-4 w-4 text-zinc-400 shrink-0" />
+                    <input
+                      type="email"
+                      required
+                      autoFocus
+                      value={googleEmailInput}
+                      onChange={(e) => setGoogleEmailInput(e.target.value)}
+                      placeholder="e.g. your.email@gmail.com"
+                      className="w-full outline-none text-zinc-900 text-sm font-medium"
+                    />
                   </div>
                 </div>
-              </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowGoogleModal(false)}
+                    className="rounded-xl border border-zinc-200 px-4 py-2.5 text-xs font-semibold text-zinc-600 hover:bg-zinc-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!googleEmailInput.includes("@")}
+                    className="rounded-xl bg-blue-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-md shadow-blue-600/20"
+                  >
+                    Continue to Yelp India
+                  </button>
+                </div>
+              </form>
             )}
           </div>
         </div>
