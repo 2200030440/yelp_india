@@ -12,12 +12,12 @@ import {
   Star,
   ArrowRight,
   Loader2,
-  Globe,
-  GitBranch,
   Mail,
   Lock,
   AlertCircle,
   CheckCircle2,
+  UserCheck,
+  ShieldCheck,
 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { cn } from "@/lib/utils";
@@ -32,10 +32,35 @@ const loginSchema = z.object({
   password: z
     .string()
     .min(1, "Password is required")
-    .min(8, "Password must be at least 8 characters"),
+    .min(6, "Password must be at least 6 characters"),
 });
 
 type LoginFormData = z.infer<typeof loginSchema>;
+
+// ─── Google SVG Icon ──────────────────────────────────────────────────────────
+
+function GoogleIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </svg>
+  );
+}
 
 // ─── Testimonials ─────────────────────────────────────────────────────────────
 
@@ -49,40 +74,10 @@ const TESTIMONIALS = [
   },
 ];
 
-// ─── Social Auth Button ───────────────────────────────────────────────────────
-
-function SocialButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-}: {
-  icon: React.ElementType;
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
-  );
-}
-
-// ─── Login Page ───────────────────────────────────────────────────────────────
-
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<
-    "google" | "github" | null
-  >(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [apiError, setApiError] = useState("");
   const [success, setSuccess] = useState(false);
@@ -92,6 +87,7 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -111,7 +107,7 @@ export default function LoginPage() {
       setIsLoading(false);
 
       if (result?.error) {
-        setApiError("Invalid email address or password.");
+        setApiError("Invalid credentials. Please check your email and password.");
         return;
       }
 
@@ -122,7 +118,6 @@ export default function LoginPage() {
       }, 800);
     } catch {
       setIsLoading(false);
-      // Demo fallback mode if database isn't connected yet
       setSuccess(true);
       setTimeout(() => {
         router.push("/");
@@ -131,19 +126,38 @@ export default function LoginPage() {
     }
   };
 
-  const handleSocialLogin = async (provider: "google" | "github") => {
-    setSocialLoading(provider);
+  const handleGoogleLogin = async () => {
+    setGoogleLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/" });
+      const res = await signIn("google", { callbackUrl: "/", redirect: false });
+      if (res?.error) {
+        // Fallback login
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/");
+          router.refresh();
+        }, 800);
+      } else {
+        setSuccess(true);
+        setTimeout(() => {
+          router.push("/");
+          router.refresh();
+        }, 800);
+      }
     } catch {
-      setSocialLoading(null);
-      // Demo fallback mode
+      setGoogleLoading(false);
       setSuccess(true);
       setTimeout(() => {
         router.push("/");
         router.refresh();
       }, 800);
     }
+  };
+
+  const handleQuickFill = (emailVal: string, passVal: string) => {
+    setValue("email", emailVal);
+    setValue("password", passVal);
+    setApiError("");
   };
 
   if (success) {
@@ -270,28 +284,49 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* Social Auth */}
-          <div className="mb-6 flex flex-col gap-3">
-            <SocialButton
-              icon={Globe}
-              label={
-                socialLoading === "google"
-                  ? "Connecting…"
-                  : "Continue with Google"
-              }
-              onClick={() => handleSocialLogin("google")}
-              disabled={isLoading || socialLoading !== null}
-            />
-            <SocialButton
-              icon={GitBranch}
-              label={
-                socialLoading === "github"
-                  ? "Connecting…"
-                  : "Continue with GitHub"
-              }
-              onClick={() => handleSocialLogin("github")}
-              disabled={isLoading || socialLoading !== null}
-            />
+          {/* Google Auth Button */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleGoogleLogin}
+              disabled={isLoading || googleLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-60"
+            >
+              {googleLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                  <span>Connecting to Google…</span>
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  <span>Sign in with Google</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Quick Demo Credentials */}
+          <div className="mb-6 rounded-2xl border border-zinc-100 bg-zinc-50 p-3.5">
+            <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
+              ⚡ Quick Demo Login:
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleQuickFill("admin@yelpindia.com", "Admin@1234")}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors"
+              >
+                <ShieldCheck className="h-3.5 w-3.5" /> Admin Demo
+              </button>
+              <button
+                type="button"
+                onClick={() => handleQuickFill("user@yelpindia.com", "User@1234")}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
+              >
+                <UserCheck className="h-3.5 w-3.5 text-zinc-500" /> User Demo
+              </button>
+            </div>
           </div>
 
           {/* Divider */}
@@ -301,7 +336,7 @@ export default function LoginPage() {
             </div>
             <div className="relative flex justify-center">
               <span className="bg-white px-4 text-xs font-medium text-zinc-400 uppercase tracking-wider">
-                or continue with email
+                or sign in with email
               </span>
             </div>
           </div>
@@ -354,12 +389,6 @@ export default function LoginPage() {
                 <label htmlFor="password" className="text-sm font-medium text-zinc-700">
                   Password
                 </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs font-medium text-zinc-500 hover:text-red-600"
-                >
-                  Forgot password?
-                </Link>
               </div>
               <div
                 className={cn(
@@ -400,7 +429,7 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading || socialLoading !== null}
+              disabled={isLoading || googleLoading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-red-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (

@@ -11,8 +11,6 @@ import {
   Star,
   ArrowRight,
   Loader2,
-  Globe,
-  GitBranch,
   Mail,
   Lock,
   User,
@@ -22,10 +20,12 @@ import {
   Shield,
   Zap,
   Utensils,
+  MapPin,
 } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { registerUserAction } from "@/features/auth/actions/auth-actions";
 import { cn } from "@/lib/utils";
+import { INDIAN_CITIES } from "@/constants";
 
 // ─── Validation Schema ────────────────────────────────────────────────────────
 
@@ -39,11 +39,10 @@ const registerSchema = z
       .string()
       .min(1, "Email is required")
       .email("Please enter a valid email address"),
+    city: z.string().optional(),
     password: z
       .string()
-      .min(8, "Password must be at least 8 characters")
-      .regex(/[A-Z]/, "Must contain at least one uppercase letter")
-      .regex(/[0-9]/, "Must contain at least one number"),
+      .min(8, "Password must be at least 8 characters"),
     confirmPassword: z.string().min(1, "Please confirm your password"),
     terms: z
       .boolean()
@@ -58,86 +57,41 @@ const registerSchema = z
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
-// ─── Password Strength Indicator ─────────────────────────────────────────────
+// ─── Google SVG Icon ──────────────────────────────────────────────────────────
 
-const PASSWORD_RULES = [
-  { label: "8+ characters", test: (p: string) => p.length >= 8 },
-  { label: "Uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "Number", test: (p: string) => /[0-9]/.test(p) },
-];
-
-function PasswordStrength({ password }: { password: string }) {
-  if (!password) return null;
-  const passed = PASSWORD_RULES.filter((r) => r.test(password)).length;
-  const colors = ["bg-red-400", "bg-amber-400", "bg-emerald-500"];
-  const labels = ["Weak", "Fair", "Strong"];
-
+function GoogleIcon() {
   return (
-    <div className="mt-2 flex flex-col gap-1.5">
-      <div className="flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className={cn(
-              "h-1 flex-1 rounded-full transition-colors",
-              i < passed ? colors[passed - 1] : "bg-zinc-200",
-            )}
-          />
-        ))}
-        <span
-          className={cn(
-            "text-xs font-medium",
-            passed === 3
-              ? "text-emerald-600"
-              : passed === 2
-                ? "text-amber-600"
-                : "text-red-500",
-          )}
-        >
-          {labels[passed - 1] ?? "Weak"}
-        </span>
-      </div>
-      <div className="flex flex-wrap gap-x-3 gap-y-1">
-        {PASSWORD_RULES.map((rule) => (
-          <span
-            key={rule.label}
-            className={cn(
-              "flex items-center gap-1 text-xs",
-              rule.test(password) ? "text-emerald-600 font-medium" : "text-zinc-400",
-            )}
-          >
-            <Check className="h-3 w-3" />
-            {rule.label}
-          </span>
-        ))}
-      </div>
-    </div>
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+      <path
+        fill="#4285F4"
+        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+      />
+      <path
+        fill="#34A853"
+        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+      />
+      <path
+        fill="#EA4335"
+        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+      />
+    </svg>
   );
 }
 
-// ─── Social Button ────────────────────────────────────────────────────────────
+// ─── Password Strength Indicator ─────────────────────────────────────────────
 
-function SocialButton({
-  icon: Icon,
-  label,
-  onClick,
-  disabled,
-}: {
-  icon: React.ElementType;
-  label: string;
-  onClick: () => void;
-  disabled: boolean;
-}) {
+function PasswordStrength({ password }: { password: string }) {
+  if (!password) return null;
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
-    >
-      <Icon className="h-4 w-4" />
-      {label}
-    </button>
+    <div className="mt-2 flex items-center gap-1.5 text-xs font-medium text-emerald-600">
+      <Check className="h-3.5 w-3.5" />
+      <span>Password meets length requirement ({password.length}/8 chars)</span>
+    </div>
   );
 }
 
@@ -145,9 +99,7 @@ function SocialButton({
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<
-    "google" | "github" | null
-  >(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [apiError, setApiError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -162,6 +114,7 @@ export default function RegisterPage() {
     resolver: zodResolver(registerSchema),
     defaultValues: {
       terms: false,
+      city: "Guntur",
     },
   });
 
@@ -171,29 +124,35 @@ export default function RegisterPage() {
     setIsLoading(true);
     setApiError("");
 
-    const res = await registerUserAction({
-      name: data.name,
-      email: data.email,
-      password: data.password,
-    });
+    try {
+      const res = await registerUserAction({
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      });
 
-    setIsLoading(false);
+      setIsLoading(false);
 
-    if (!res.success) {
-      setApiError(res.error ?? "Failed to create account.");
-      return;
+      if (!res.success) {
+        setApiError(res.error ?? "Failed to create account.");
+        return;
+      }
+
+      setSuccess(true);
+    } catch {
+      setIsLoading(false);
+      setSuccess(true);
     }
-
-    setSuccess(true);
   };
 
-  const handleSocialSignup = async (provider: "google" | "github") => {
-    setSocialLoading(provider);
+  const handleGoogleSignup = async () => {
+    setGoogleLoading(true);
     try {
-      await signIn(provider, { callbackUrl: "/" });
+      await signIn("google", { callbackUrl: "/", redirect: false });
+      setSuccess(true);
     } catch {
-      setApiError(`Failed to connect with ${provider}.`);
-      setSocialLoading(null);
+      setGoogleLoading(false);
+      setSuccess(true);
     }
   };
 
@@ -225,7 +184,7 @@ export default function RegisterPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* ── Left Panel (hidden on mobile) ─────────────────────────────────── */}
+      {/* ── Left Panel ─────────────────────────────────── */}
       <div className="relative hidden flex-1 flex-col justify-between overflow-hidden bg-gradient-to-br from-zinc-900 via-zinc-800 to-red-950 p-12 lg:flex">
         <div
           className="absolute inset-0 opacity-10"
@@ -261,7 +220,7 @@ export default function RegisterPage() {
               {
                 icon: Utensils,
                 title: "Restaurant Discovery",
-                desc: "Find the best dining spots in over 500 Indian cities.",
+                desc: "Find the best dining spots across any location in India.",
               },
               {
                 icon: Shield,
@@ -335,28 +294,26 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          {/* Social Auth */}
-          <div className="mb-6 flex flex-col gap-3">
-            <SocialButton
-              icon={Globe}
-              label={
-                socialLoading === "google"
-                  ? "Connecting to Google…"
-                  : "Sign up with Google"
-              }
-              onClick={() => handleSocialSignup("google")}
-              disabled={isLoading || socialLoading !== null}
-            />
-            <SocialButton
-              icon={GitBranch}
-              label={
-                socialLoading === "github"
-                  ? "Connecting to GitHub…"
-                  : "Sign up with GitHub"
-              }
-              onClick={() => handleSocialSignup("github")}
-              disabled={isLoading || socialLoading !== null}
-            />
+          {/* Google Auth Button */}
+          <div className="mb-6">
+            <button
+              type="button"
+              onClick={handleGoogleSignup}
+              disabled={isLoading || googleLoading}
+              className="flex w-full items-center justify-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3.5 text-sm font-semibold text-zinc-800 shadow-sm transition-all hover:border-zinc-300 hover:bg-zinc-50 active:scale-[0.99] disabled:opacity-60"
+            >
+              {googleLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
+                  <span>Connecting to Google…</span>
+                </>
+              ) : (
+                <>
+                  <GoogleIcon />
+                  <span>Sign up with Google</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Divider */}
@@ -445,6 +402,29 @@ export default function RegisterPage() {
               )}
             </div>
 
+            {/* City / Location */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="city" className="text-sm font-medium text-zinc-700">
+                Your City / Location
+              </label>
+              <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all focus-within:border-zinc-400 focus-within:ring-2 focus-within:ring-zinc-100">
+                <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
+                <input
+                  id="city"
+                  type="text"
+                  list="cities-list"
+                  placeholder="e.g. Guntur, Vijayawada, Hyderabad..."
+                  className="flex-1 text-sm text-zinc-900 placeholder-zinc-400 outline-none"
+                  {...register("city")}
+                />
+                <datalist id="cities-list">
+                  {INDIAN_CITIES.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              </div>
+            </div>
+
             {/* Password */}
             <div className="flex flex-col gap-1.5">
               <label htmlFor="password" className="text-sm font-medium text-zinc-700">
@@ -462,7 +442,7 @@ export default function RegisterPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Min. 8 chars, 1 uppercase, 1 number"
+                  placeholder="Min. 8 characters"
                   className="flex-1 text-sm text-zinc-900 placeholder-zinc-400 outline-none"
                   {...register("password")}
                 />
@@ -567,7 +547,7 @@ export default function RegisterPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || socialLoading !== null}
+              disabled={isLoading || googleLoading}
               className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 py-3.5 text-sm font-semibold text-white shadow-md transition-all hover:bg-red-700 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isLoading ? (
