@@ -33,6 +33,7 @@ export default function Navbar() {
     { href: "/", label: "Home" },
     { href: "/places", label: "Restaurants" },
     { href: "/search", label: "Search Food" },
+    { href: "/map", label: "🗺 Map" },
   ];
 
   return (

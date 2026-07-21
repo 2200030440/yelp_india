@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useMemo, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   Search,
   MapPin,
@@ -9,6 +10,8 @@ import {
   X,
   SlidersHorizontal,
   UtensilsCrossed,
+  Map,
+  LayoutGrid,
 } from "lucide-react";
 import RestaurantCard from "@/components/common/RestaurantCard";
 import StarRating from "@/components/common/StarRating";
@@ -16,144 +19,29 @@ import { Button } from "@/components/ui/button";
 import { RESTAURANT_CATEGORIES, INDIAN_CITIES, SORT_OPTIONS } from "@/constants";
 import { cn } from "@/lib/utils";
 
-// Sample Restaurant Dataset
-const ALL_RESTAURANTS = [
-  {
-    id: "1",
-    name: "Bukhara - ITC Maurya",
-    slug: "bukhara-delhi",
-    categorySlug: "north-indian",
-    cuisine: "North Indian / Tandoori",
-    city: "New Delhi",
-    rating: 4.9,
-    reviewCount: 2847,
-    priceLevel: 4,
-    image:
-      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=80",
-    isOpen: true,
-    badge: "Award Winner",
-  },
-  {
-    id: "2",
-    name: "Trishna Coastal Dining",
-    slug: "trishna-mumbai",
-    categorySlug: "street-food",
-    cuisine: "Coastal Seafood",
-    city: "Mumbai",
-    rating: 4.7,
-    reviewCount: 1923,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
-    isOpen: true,
-    badge: "Most Loved",
-  },
-  {
-    id: "3",
-    name: "Indian Accent",
-    slug: "indian-accent-delhi",
-    categorySlug: "fine-dining",
-    cuisine: "Modern Indian Fine Dining",
-    city: "New Delhi",
-    rating: 4.8,
-    reviewCount: 3156,
-    priceLevel: 4,
-    image:
-      "https://images.unsplash.com/photo-1567337710282-00832b415979?w=800&q=80",
-    isOpen: false,
-    badge: "Top Pick",
-  },
-  {
-    id: "4",
-    name: "Paradise Biryani House",
-    slug: "paradise-hyderabad",
-    categorySlug: "biryani-specialty",
-    cuisine: "Hyderabadi Biryani & Kebabs",
-    city: "Hyderabad",
-    rating: 4.6,
-    reviewCount: 5432,
-    priceLevel: 2,
-    image:
-      "https://images.unsplash.com/photo-1563379091339-03246963d7d3?w=800&q=80",
-    isOpen: true,
-    badge: "Iconic",
-  },
-  {
-    id: "5",
-    name: "Karavalli Heritage Kitchen",
-    slug: "karavalli-bengaluru",
-    categorySlug: "south-indian",
-    cuisine: "South Indian Coastal",
-    city: "Bengaluru",
-    rating: 4.7,
-    reviewCount: 1654,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&q=80",
-    isOpen: true,
-    badge: null,
-  },
-  {
-    id: "6",
-    name: "Saravana Bhavan",
-    slug: "saravana-bhavan-chennai",
-    categorySlug: "south-indian",
-    cuisine: "Authentic South Indian Tiffin",
-    city: "Chennai",
-    rating: 4.5,
-    reviewCount: 8921,
-    priceLevel: 1,
-    image:
-      "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80",
-    isOpen: true,
-    badge: "Local Favorite",
-  },
-  {
-    id: "7",
-    name: "Subbayya Gari Hotel",
-    slug: "subbayya-gari-hyderabad",
-    categorySlug: "south-indian",
-    cuisine: "Traditional Andhra Bhojanam",
-    city: "Hyderabad",
-    rating: 4.8,
-    reviewCount: 2140,
-    priceLevel: 2,
-    image:
-      "https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?w=800&q=80",
-    isOpen: true,
-    badge: "Must Try",
-  },
-  {
-    id: "8",
-    name: "Blue Tokai Coffee Roasters",
-    slug: "blue-tokai-mumbai",
-    categorySlug: "cafes-bakeries",
-    cuisine: "Artisanal Coffee & Cafe Fare",
-    city: "Mumbai",
-    rating: 4.6,
-    reviewCount: 1240,
-    priceLevel: 2,
-    image:
-      "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=800&q=80",
-    isOpen: true,
-    badge: "Popular Cafe",
-  },
-  {
-    id: "9",
-    name: "Toit Brewpub",
-    slug: "toit-bengaluru",
-    categorySlug: "pubs-bars",
-    cuisine: "Craft Beer & Pub Grub",
-    city: "Bengaluru",
-    rating: 4.7,
-    reviewCount: 6890,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1514933651103-005eec06c04b?w=800&q=80",
-    isOpen: true,
-    badge: "Nightlife Pick",
-  },
-];
+// Load PlacesMap client-only (Leaflet requires browser)
+const PlacesMap = dynamic(
+  () => import("@/components/common/PlacesMap"),
+  { ssr: false, loading: () => <div className="flex h-[500px] items-center justify-center bg-zinc-100 rounded-2xl text-zinc-400"><MapPin className="h-8 w-8 animate-pulse" /></div> },
+);
+
+interface RestaurantItem {
+  id: string;
+  name: string;
+  slug: string;
+  categorySlug: string;
+  cuisine: string;
+  city: string;
+  state?: string;
+  rating: number;
+  reviewCount: number;
+  priceLevel: number;
+  image: string;
+  isOpen: boolean;
+  badge: string | null;
+  latitude?: number;
+  longitude?: number;
+}
 
 function PlacesContent() {
   const searchParams = useSearchParams();
@@ -161,6 +49,8 @@ function PlacesContent() {
   const initialCity = searchParams.get("city") ?? "all";
   const initialSearch = searchParams.get("search") ?? "";
 
+  const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedCity, setSelectedCity] = useState(initialCity);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
@@ -168,10 +58,55 @@ function PlacesContent() {
   const [minRating, setMinRating] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<string>("rating");
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
+
+  useEffect(() => {
+    async function loadPlaces() {
+      try {
+        const res = await fetch("/api/places");
+        if (res.ok) {
+          const data = await res.json();
+          const items: RestaurantItem[] = (data.places || []).map((p: any) => ({
+            id: p.id || p.slug,
+            name: p.name,
+            slug: p.slug,
+            categorySlug: p.category?.slug || "north-indian",
+            cuisine: p.category?.name || p.cuisine || "North Indian",
+            city: p.city,
+            state: p.state,
+            rating: p.averageRating ?? p.rating ?? 5.0,
+            reviewCount: p.reviewCount ?? 1,
+            priceLevel: p.priceLevel ?? 2,
+            image: p.photos?.[0]?.url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
+            isOpen: true,
+            badge: p.isFeatured ? "Featured" : null,
+            latitude: p.latitude ?? undefined,
+            longitude: p.longitude ?? undefined,
+          }));
+          setRestaurants(items);
+        }
+      } catch (err) {
+        console.error("Error fetching places", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadPlaces();
+  }, []);
+
+  // Dynamically extract unique cities from available restaurants + default cities list
+  const availableCities = useMemo(() => {
+    const citiesSet = new Set<string>();
+    restaurants.forEach((r) => {
+      if (r.city) citiesSet.add(r.city);
+    });
+    INDIAN_CITIES.forEach((c) => citiesSet.add(c));
+    return Array.from(citiesSet);
+  }, [restaurants]);
 
   // Filter & Sort Logic
   const filteredRestaurants = useMemo(() => {
-    return ALL_RESTAURANTS.filter((r) => {
+    return restaurants.filter((r) => {
       // Category filter
       if (selectedCategory !== "all" && r.categorySlug !== selectedCategory) {
         return false;
@@ -185,7 +120,8 @@ function PlacesContent() {
         searchQuery &&
         !r.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
         !r.cuisine.toLowerCase().includes(searchQuery.toLowerCase()) &&
-        !r.city.toLowerCase().includes(searchQuery.toLowerCase())
+        !r.city.toLowerCase().includes(searchQuery.toLowerCase()) &&
+        !(r.state && r.state.toLowerCase().includes(searchQuery.toLowerCase()))
       ) {
         return false;
       }
@@ -203,7 +139,7 @@ function PlacesContent() {
       if (sortBy === "reviewCount") return b.reviewCount - a.reviewCount;
       return b.id.localeCompare(a.id);
     });
-  }, [selectedCategory, selectedCity, searchQuery, selectedPrice, minRating, sortBy]);
+  }, [restaurants, selectedCategory, selectedCity, searchQuery, selectedPrice, minRating, sortBy]);
 
   const toggleBookmark = (slug: string) => {
     setBookmarks((prev) =>
@@ -240,7 +176,7 @@ function PlacesContent() {
               Explore Top Restaurants & Cafes
             </h1>
             <p className="text-sm text-zinc-500 max-w-2xl">
-              Discover authentic Indian dining, top-rated biryani hubs, coastal kitchens, and luxury fine dining across 500+ cities.
+              Discover authentic Indian dining, top-rated biryani hubs, coastal kitchens, and luxury fine dining across all locations in India.
             </p>
           </div>
 
@@ -253,7 +189,7 @@ function PlacesContent() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by restaurant name, cuisine, dish..."
+                placeholder="Search by restaurant name, city, state, or cuisine..."
                 className="w-full text-sm outline-none text-zinc-900"
               />
               {searchQuery && (
@@ -264,15 +200,15 @@ function PlacesContent() {
             </div>
 
             {/* City Dropdown */}
-            <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:w-48">
+            <div className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 shadow-sm sm:w-56">
               <MapPin className="h-4 w-4 text-zinc-400 shrink-0" />
               <select
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
                 className="w-full text-sm outline-none bg-transparent text-zinc-900 font-medium"
               >
-                <option value="all">All Cities</option>
-                {INDIAN_CITIES.slice(0, 10).map((c) => (
+                <option value="all">All Cities (India)</option>
+                {availableCities.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -399,39 +335,89 @@ function PlacesContent() {
             </div>
           </aside>
 
-          {/* Restaurant Grid */}
+          {/* Restaurant Grid / Map */}
           <main className="flex-1">
-            {/* Active filter summary */}
+            {/* Active filter summary + view toggle */}
             <div className="mb-4 flex items-center justify-between text-sm">
               <p className="text-zinc-600">
                 Showing <span className="font-bold text-zinc-900">{filteredRestaurants.length}</span> restaurants
               </p>
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 shadow-sm">
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                    viewMode === "list"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-zinc-600 hover:bg-zinc-50",
+                  )}
+                >
+                  <LayoutGrid className="h-3.5 w-3.5" /> List
+                </button>
+                <button
+                  onClick={() => setViewMode("map")}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all",
+                    viewMode === "map"
+                      ? "bg-red-600 text-white shadow-sm"
+                      : "text-zinc-600 hover:bg-zinc-50",
+                  )}
+                >
+                  <Map className="h-3.5 w-3.5" /> Map
+                </button>
+              </div>
             </div>
 
-            {/* Grid */}
-            {filteredRestaurants.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredRestaurants.map((r) => (
-                  <RestaurantCard
-                    key={r.id}
-                    {...r}
-                    isSaved={bookmarks.includes(r.slug)}
-                    onBookmarkToggle={toggleBookmark}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white p-12 text-center">
-                <UtensilsCrossed className="h-12 w-12 text-zinc-300 mb-3" />
-                <h3 className="text-lg font-bold text-zinc-900">No restaurants found</h3>
-                <p className="mt-1 text-sm text-zinc-500 max-w-sm">
-                  We couldn&apos;t find any restaurants matching your active filters. Try clearing your filters or searching for something else.
-                </p>
-                <Button onClick={clearAllFilters} variant="outline" className="mt-4">
-                  Reset all filters
-                </Button>
-              </div>
+            {/* Map View */}
+            {viewMode === "map" && (
+              <PlacesMap
+                places={filteredRestaurants.map((r) => ({
+                  id: r.id,
+                  name: r.name,
+                  slug: r.slug,
+                  latitude: r.latitude ?? 20.5937,
+                  longitude: r.longitude ?? 78.9629,
+                  city: r.city,
+                  averageRating: r.rating,
+                  reviewCount: r.reviewCount,
+                  priceLevel: r.priceLevel,
+                  category: r.cuisine,
+                  primaryPhotoUrl: r.image,
+                }))}
+                height="h-[500px]"
+              />
             )}
+
+            {/* List Grid */}
+            {viewMode === "list" &&
+              (loading ? (
+                <div className="p-12 text-center text-sm font-medium text-zinc-400">
+                  Loading directory...
+                </div>
+              ) : filteredRestaurants.length > 0 ? (
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                  {filteredRestaurants.map((r) => (
+                    <RestaurantCard
+                      key={r.id}
+                      {...r}
+                      isSaved={bookmarks.includes(r.slug)}
+                      onBookmarkToggle={toggleBookmark}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white p-12 text-center">
+                  <UtensilsCrossed className="h-12 w-12 text-zinc-300 mb-3" />
+                  <h3 className="text-lg font-bold text-zinc-900">No restaurants found</h3>
+                  <p className="mt-1 text-sm text-zinc-500 max-w-sm">
+                    We couldn&apos;t find any restaurants matching your active filters. Try clearing your filters or searching for something else.
+                  </p>
+                  <Button onClick={clearAllFilters} variant="outline" className="mt-4">
+                    Reset all filters
+                  </Button>
+                </div>
+              ))}
           </main>
         </div>
       </div>

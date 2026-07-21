@@ -1,68 +1,25 @@
 "use client";
 
-import { useState, useMemo, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Search, MapPin, UtensilsCrossed } from "lucide-react";
 import RestaurantCard from "@/components/common/RestaurantCard";
 
-const SAMPLE_SEARCH_DATA = [
-  {
-    id: "1",
-    name: "Bukhara - ITC Maurya",
-    slug: "bukhara-delhi",
-    cuisine: "North Indian / Tandoori",
-    city: "New Delhi",
-    rating: 4.9,
-    reviewCount: 2847,
-    priceLevel: 4,
-    image:
-      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=80",
-    isOpen: true,
-    badge: "Award Winner",
-  },
-  {
-    id: "2",
-    name: "Trishna Coastal Dining",
-    slug: "trishna-mumbai",
-    cuisine: "Coastal Seafood",
-    city: "Mumbai",
-    rating: 4.7,
-    reviewCount: 1923,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
-    isOpen: true,
-    badge: "Most Loved",
-  },
-  {
-    id: "4",
-    name: "Paradise Biryani House",
-    slug: "paradise-hyderabad",
-    cuisine: "Hyderabadi Biryani & Kebabs",
-    city: "Hyderabad",
-    rating: 4.6,
-    reviewCount: 5432,
-    priceLevel: 2,
-    image:
-      "https://images.unsplash.com/photo-1563379091339-03246963d7d3?w=800&q=80",
-    isOpen: true,
-    badge: "Iconic",
-  },
-  {
-    id: "5",
-    name: "Karavalli Heritage Kitchen",
-    slug: "karavalli-bengaluru",
-    cuisine: "South Indian Coastal",
-    city: "Bengaluru",
-    rating: 4.7,
-    reviewCount: 1654,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&q=80",
-    isOpen: true,
-    badge: null,
-  },
-];
+interface SearchPlace {
+  id: string;
+  name: string;
+  slug: string;
+  categorySlug: string;
+  cuisine: string;
+  city: string;
+  state?: string;
+  rating: number;
+  reviewCount: number;
+  priceLevel: number;
+  image: string;
+  isOpen: boolean;
+  badge: string | null;
+}
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -71,13 +28,50 @@ function SearchContent() {
 
   const [query, setQuery] = useState(initialQuery);
   const [city, setCity] = useState(initialCity);
+  const [places, setPlaces] = useState<SearchPlace[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchSearchPlaces() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/places");
+        if (res.ok) {
+          const data = await res.json();
+          const mapped: SearchPlace[] = (data.places || []).map((p: any) => ({
+            id: p.id || p.slug,
+            name: p.name,
+            slug: p.slug,
+            categorySlug: p.category?.slug || "north-indian",
+            cuisine: p.category?.name || p.cuisine || "North Indian",
+            city: p.city,
+            state: p.state,
+            rating: p.averageRating ?? p.rating ?? 5.0,
+            reviewCount: p.reviewCount ?? 1,
+            priceLevel: p.priceLevel ?? 2,
+            image: p.photos?.[0]?.url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
+            isOpen: true,
+            badge: p.isFeatured ? "Featured" : null,
+          }));
+          setPlaces(mapped);
+        }
+      } catch (err) {
+        console.error("Failed to fetch search places", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchSearchPlaces();
+  }, []);
 
   const results = useMemo(() => {
-    return SAMPLE_SEARCH_DATA.filter((r) => {
+    return places.filter((r) => {
       if (
         query &&
         !r.name.toLowerCase().includes(query.toLowerCase()) &&
-        !r.cuisine.toLowerCase().includes(query.toLowerCase())
+        !r.cuisine.toLowerCase().includes(query.toLowerCase()) &&
+        !r.city.toLowerCase().includes(query.toLowerCase()) &&
+        !(r.state && r.state.toLowerCase().includes(query.toLowerCase()))
       ) {
         return false;
       }
@@ -86,7 +80,7 @@ function SearchContent() {
       }
       return true;
     });
-  }, [query, city]);
+  }, [places, query, city]);
 
   return (
     <div className="bg-zinc-50 min-h-screen py-12 px-4">
@@ -97,7 +91,7 @@ function SearchContent() {
             Food & Restaurant Search
           </h1>
           <p className="mt-2 text-sm text-zinc-500">
-            Find dish recommendations, top-rated restaurants, and cafes near you.
+            Find dish recommendations, top-rated restaurants, and cafes across India.
           </p>
 
           {/* Search Inputs */}
@@ -108,17 +102,17 @@ function SearchContent() {
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Biryani, Butter Chicken, Cafes..."
+                placeholder="Biryani, Butter Chicken, Jaipur, Cafes..."
                 className="w-full text-sm outline-none text-zinc-900"
               />
             </div>
-            <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 sm:w-44 border-t sm:border-t-0 sm:border-l border-zinc-100">
+            <div className="flex items-center gap-3 rounded-xl px-4 py-2.5 sm:w-56 border-t sm:border-t-0 sm:border-l border-zinc-100">
               <MapPin className="h-4 w-4 text-zinc-400 shrink-0" />
               <input
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                placeholder="Mumbai, Delhi..."
+                placeholder="City (e.g. Mumbai, Jaipur...)"
                 className="w-full text-sm outline-none text-zinc-900"
               />
             </div>
@@ -139,7 +133,11 @@ function SearchContent() {
         </div>
 
         {/* Results Grid */}
-        {results.length > 0 ? (
+        {loading ? (
+          <div className="p-12 text-center text-sm font-medium text-zinc-400">
+            Searching restaurants...
+          </div>
+        ) : results.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {results.map((r) => (
               <RestaurantCard key={r.id} {...r} />
@@ -150,7 +148,7 @@ function SearchContent() {
             <UtensilsCrossed className="h-12 w-12 text-zinc-300 mb-3" />
             <h3 className="text-lg font-bold text-zinc-900">No matches found</h3>
             <p className="mt-1 text-sm text-zinc-500">
-              Try searching for &ldquo;Biryani&rdquo;, &ldquo;North Indian&rdquo;, or &ldquo;Mumbai&rdquo;.
+              Try searching for &ldquo;Biryani&rdquo;, &ldquo;North Indian&rdquo;, or &ldquo;Jaipur&rdquo;.
             </p>
           </div>
         )}

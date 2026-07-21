@@ -16,8 +16,11 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:prod": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "ts-node --project tsconfig.json prisma/seed/index.ts",
+    "db:seed": "npx tsx prisma/seed/index.ts",
     "db:reset": "prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed/index.ts"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.9.1",
@@ -31,6 +34,8 @@
     "cloudinary": "^2.6.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.23.4",
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "lucide-react": "^0.525.0",
     "next": "16.2.10",
     "next-auth": "^5.0.0-beta.29",
@@ -38,6 +43,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.57.0",
+    "react-leaflet": "^5.0.0",
     "resend": "^4.6.0",
     "tailwind-merge": "^3.3.1",
     "zod": "^3.24.4"

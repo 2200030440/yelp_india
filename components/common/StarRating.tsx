@@ -37,18 +37,29 @@ export default function StarRating({
         const starValue = index + 1;
         const isFilled = starValue <= Math.round(currentDisplayRating);
 
+        if (!interactive) {
+          return (
+            <span key={index} className="inline-flex items-center">
+              <Star
+                className={cn(
+                  starSizes[size],
+                  isFilled
+                    ? "fill-amber-400 text-amber-400"
+                    : "fill-zinc-200 text-zinc-200",
+                )}
+              />
+            </span>
+          );
+        }
+
         return (
           <button
             key={index}
-            type={interactive ? "button" : undefined}
-            disabled={!interactive}
-            onClick={() => interactive && onRatingChange?.(starValue)}
-            onMouseEnter={() => interactive && setHoverRating(starValue)}
-            onMouseLeave={() => interactive && setHoverRating(null)}
-            className={cn(
-              "transition-transform",
-              interactive ? "cursor-pointer hover:scale-110" : "cursor-default",
-            )}
+            type="button"
+            onClick={() => onRatingChange?.(starValue)}
+            onMouseEnter={() => setHoverRating(starValue)}
+            onMouseLeave={() => setHoverRating(null)}
+            className="transition-transform cursor-pointer hover:scale-110"
             aria-label={`${starValue} Star Rating`}
           >
             <Star

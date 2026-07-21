@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -371,6 +371,46 @@ function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) 
   );
 }
 
+function FeaturedSection() {
+  const [places, setPlaces] = useState<any[]>(FEATURED_RESTAURANTS);
+
+  useEffect(() => {
+    async function fetchFeatured() {
+      try {
+        const res = await fetch("/api/places");
+        if (res.ok) {
+          const data = await res.json();
+          const mapped = (data.places || []).map((p: any) => ({
+            id: p.id || p.slug,
+            name: p.name,
+            slug: p.slug,
+            cuisine: p.category?.name || p.cuisine || "North Indian",
+            city: p.city,
+            rating: p.averageRating ?? p.rating ?? 5.0,
+            reviewCount: p.reviewCount ?? 1,
+            priceLevel: p.priceLevel ?? 2,
+            image: p.photos?.[0]?.url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
+            isOpen: true,
+            badge: p.isFeatured ? "Featured" : null,
+          }));
+          if (mapped.length > 0) setPlaces(mapped.slice(0, 6));
+        }
+      } catch (err) {
+        console.error("Failed to fetch featured places", err);
+      }
+    }
+    fetchFeatured();
+  }, []);
+
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {places.map((place) => (
+        <RestaurantCard key={place.id} place={place} />
+      ))}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
@@ -497,11 +537,7 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {FEATURED_RESTAURANTS.map((place) => (
-              <RestaurantCard key={place.id} place={place} />
-            ))}
-          </div>
+          <FeaturedSection />
 
           <div className="mt-8 text-center md:hidden">
             <Link
