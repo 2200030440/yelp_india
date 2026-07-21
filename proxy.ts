@@ -1,5 +1,5 @@
 // proxy.ts
-// Next.js 16 proxy / middleware — Edge compatible.
+// Next.js 16 proxy / edge middleware — Edge compatible.
 // Uses authConfig without loading Node-only database drivers.
 
 import NextAuth from "next-auth";
@@ -38,6 +38,8 @@ export const proxy = auth((req) => {
 
   return NextResponse.next();
 });
+
+export default proxy;
 
 export const config = {
   matcher: [

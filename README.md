@@ -91,31 +91,22 @@ Open [http://localhost:3000](http://localhost:3000) to see the app.
 ```
 yelp-india/
 ├── app/                    # Next.js App Router
-│   ├── (auth)/             # Login, register, forgot password
-│   ├── (main)/             # Homepage, places, search, profile
+│   ├── (auth)/             # Login, register
+│   ├── (main)/             # Homepage, places, search, profile, saved
 │   ├── (admin)/            # Admin panel
 │   └── api/                # API Route Handlers
-├── features/               # Feature modules (business logic)
-│   ├── places/
-│   ├── reviews/
-│   ├── auth/
-│   ├── search/
-│   ├── favorites/
-│   ├── admin/
-│   └── users/
-├── components/             # Shared components
-│   ├── ui/                 # shadcn/ui components
+├── actions/                # Server Actions (auth, places, reviews, favorites)
+├── components/             # UI and layout components
+│   ├── ui/                 # Reusable UI components
 │   ├── layout/             # Navbar, Footer, Sidebar
-│   ├── common/             # StarRating, PhotoGallery, etc.
-│   └── forms/              # Form components
-├── lib/                    # Third-party client setup
-├── hooks/                  # Global shared hooks
-├── types/                  # Global TypeScript types
-├── constants/              # App-wide constants
+│   └── common/             # MapView, PhotoGallery, RestaurantCard, etc.
+├── lib/                    # Core utilities, Auth, Prisma, Cloudinary, Resend
+├── types/                  # Global TypeScript definitions
+├── constants/              # App constants and static data
 ├── config/                 # Site configuration
 ├── providers/              # React context providers
-├── prisma/                 # Database schema + migrations
-└── middleware.ts           # Auth + rate limiting middleware
+├── prisma/                 # Database schema + migrations + seeds
+└── middleware.ts           # NextAuth Edge authentication middleware
 ```
 
 ---

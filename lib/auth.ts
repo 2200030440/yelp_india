@@ -26,9 +26,12 @@ declare module "next-auth" {
 // Resilient PrismaAdapter wrapper that gracefully handles DB offline / connection failures
 function createResilientAdapter(p: typeof prisma) {
   const base = PrismaAdapter(p);
+  type AdapterUserParam = Parameters<NonNullable<typeof base.createUser>>[0];
+  type AdapterAccountParam = Parameters<NonNullable<typeof base.linkAccount>>[0];
+
   return {
     ...base,
-    async createUser(user: any) {
+    async createUser(user: AdapterUserParam) {
       try {
         return await base.createUser!(user);
       } catch (e) {
@@ -64,12 +67,11 @@ function createResilientAdapter(p: typeof prisma) {
         return null;
       }
     },
-    async linkAccount(account: any) {
+    async linkAccount(account: AdapterAccountParam) {
       try {
-        return await base.linkAccount!(account);
+        await base.linkAccount!(account);
       } catch (e) {
         console.warn("[AuthResilience] DB offline during linkAccount", e);
-        return account;
       }
     },
     async getSessionAndUser(sessionToken: string) {

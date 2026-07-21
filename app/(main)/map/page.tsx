@@ -324,7 +324,7 @@ export default function MapPage() {
         const res = await fetch("/api/places");
         if (res.ok) {
           const data = await res.json();
-          const mapped: PlacePin[] = (data.places || []).map((p: any) => ({
+          const mapped: PlacePin[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; cuisine?: string; category?: { name?: string }; photos?: Array<{ url?: string }> }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,

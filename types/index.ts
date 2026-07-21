@@ -1,6 +1,5 @@
 // types/index.ts
 // Global TypeScript types and interfaces.
-// Feature-specific types live in features/<feature>/types/
 
 export type {
   User,

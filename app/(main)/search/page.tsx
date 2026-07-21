@@ -38,7 +38,7 @@ function SearchContent() {
         const res = await fetch("/api/places");
         if (res.ok) {
           const data = await res.json();
-          const mapped: SearchPlace[] = (data.places || []).map((p: any) => ({
+          const mapped: SearchPlace[] = (data.places || []).map((p: { id?: string; name: string; slug: string; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,

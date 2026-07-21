@@ -1,6 +1,6 @@
 "use server";
 
-// features/places/actions/place-actions.ts
+// actions/place-actions.ts
 // Server Actions for Restaurant Queries, Search & Filtering
 
 import { prisma } from "@/lib/prisma";

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
@@ -25,7 +25,7 @@ import {
   X,
 } from "lucide-react";
 import { signIn } from "next-auth/react";
-import { registerUserAction } from "@/features/auth/actions/auth-actions";
+import { registerUserAction } from "@/actions/auth-actions";
 import { cn } from "@/lib/utils";
 import { INDIAN_CITIES } from "@/constants";
 
@@ -111,7 +111,7 @@ export default function RegisterPage() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
@@ -121,7 +121,7 @@ export default function RegisterPage() {
     },
   });
 
-  const passwordValue = watch("password", "");
+  const passwordValue = useWatch({ control, name: "password", defaultValue: "" });
 
   const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);

@@ -36,7 +36,7 @@ export default function SavedPlacesPage() {
         .then(({ favorites }) => {
           if (favorites && favorites.length > 0) {
             setSavedPlaces(
-              favorites.map((f: any) => ({
+              favorites.map((f: { id: string; place?: { id?: string; name?: string; slug?: string; category?: { name?: string }; city?: string; averageRating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }> } }) => ({
                 id: f.place?.id ?? f.id,
                 name: f.place?.name ?? "Saved Place",
                 slug: f.place?.slug ?? "",
@@ -62,8 +62,10 @@ export default function SavedPlacesPage() {
           setLoading(false);
         });
     } else {
-      setSavedPlaces([]);
-      setLoading(false);
+      Promise.resolve().then(() => {
+        setSavedPlaces([]);
+        setLoading(false);
+      });
     }
   }, [session]);
 

@@ -372,7 +372,7 @@ function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) 
 }
 
 function FeaturedSection() {
-  const [places, setPlaces] = useState<any[]>(FEATURED_RESTAURANTS);
+  const [places, setPlaces] = useState<typeof FEATURED_RESTAURANTS>(FEATURED_RESTAURANTS);
 
   useEffect(() => {
     async function fetchFeatured() {
@@ -380,7 +380,7 @@ function FeaturedSection() {
         const res = await fetch("/api/places");
         if (res.ok) {
           const data = await res.json();
-          const mapped = (data.places || []).map((p: any) => ({
+          const mapped = (data.places || []).map((p: { id?: string; name: string; slug: string; category?: { name?: string }; cuisine?: string; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,

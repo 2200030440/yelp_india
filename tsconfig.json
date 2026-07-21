@@ -25,18 +25,15 @@
         "name": "next"
       }
     ],
-    /* Path aliases — avoids ../../../ hell */
+    /* Path aliases */
     "paths": {
       "@/*": ["./*"],
       "@/app/*": ["./app/*"],
       "@/components/*": ["./components/*"],
-      "@/features/*": ["./features/*"],
       "@/lib/*": ["./lib/*"],
-      "@/hooks/*": ["./hooks/*"],
       "@/types/*": ["./types/*"],
       "@/constants/*": ["./constants/*"],
       "@/config/*": ["./config/*"],
-      "@/styles/*": ["./styles/*"],
       "@/actions/*": ["./actions/*"],
       "@/db/*": ["./prisma/*"]
     }

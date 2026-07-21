@@ -1,6 +1,6 @@
 "use server";
 
-// features/favorites/actions/favorite-actions.ts
+// actions/favorite-actions.ts
 // Server Actions for Managing User Favorite / Bookmarked Restaurants
 
 import { prisma } from "@/lib/prisma";

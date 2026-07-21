@@ -59,14 +59,11 @@ export default function ProfilePage() {
   // Sync profile details and user's actual reviews
   useEffect(() => {
     if (session?.user) {
-      const defaultName = session.user.name ?? session.user.email?.split("@")[0] ?? "User";
-      setName(defaultName);
-
       usersApi
         .me()
         .then(({ user }) => {
           if (user) {
-            if (user.name) setName(user.name);
+            setName(user.name ?? session.user.name ?? session.user.email?.split("@")[0] ?? "User");
             if (user.city) setCity(user.city);
             if (user.bio) setBio(user.bio);
             if (user.createdAt) {
@@ -75,7 +72,7 @@ export default function ProfilePage() {
             }
             if (user.reviews) {
               setReviews(
-                user.reviews.map((r: any) => ({
+                user.reviews.map((r: { id: string; rating: number; content: string; createdAt: Date | string; place?: { name?: string; slug?: string; city?: string }; _count?: { likes?: number } }) => ({
                   id: r.id,
                   restaurantName: r.place?.name ?? "Restaurant",
                   slug: r.place?.slug ?? "",
@@ -91,6 +88,8 @@ export default function ProfilePage() {
                 })),
               );
             }
+          } else {
+            setName(session.user.name ?? session.user.email?.split("@")[0] ?? "User");
           }
         })
         .catch(() => {
@@ -101,7 +100,7 @@ export default function ProfilePage() {
           setLoading(false);
         });
     } else {
-      setLoading(false);
+      Promise.resolve().then(() => setLoading(false));
     }
   }, [session]);
 

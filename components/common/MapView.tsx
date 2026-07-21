@@ -5,7 +5,7 @@
 // Renders a map centered on the given lat/lng with a custom pin marker.
 // Must be rendered client-side only (no SSR) — use dynamic() wrapper in pages.
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useId } from "react";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export default function MapView({
 }: MapViewProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<import("leaflet").Map | null>(null);
-  const mapId = useRef(`map-${Math.random().toString(36).slice(2)}`);
+  const mapId = useId();
 
   useEffect(() => {
     // Inject Leaflet CSS once
@@ -147,7 +147,7 @@ export default function MapView({
       </div>
       <div
         ref={mapContainerRef}
-        id={mapId.current}
+        id={mapId}
         className={cn(height, "w-full")}
         style={{ zIndex: 0 }}
       />

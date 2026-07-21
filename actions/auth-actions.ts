@@ -1,6 +1,6 @@
 "use server";
 
-// features/auth/actions/auth-actions.ts
+// actions/auth-actions.ts
 // Server Actions for User Registration
 
 import { z } from "zod";

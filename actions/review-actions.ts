@@ -1,6 +1,6 @@
 "use server";
 
-// features/reviews/actions/review-actions.ts
+// actions/review-actions.ts
 // Server Actions for Creating, Moderating & Liking Diner Reviews
 
 import { z } from "zod";

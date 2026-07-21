@@ -66,7 +66,7 @@ function PlacesContent() {
         const res = await fetch("/api/places");
         if (res.ok) {
           const data = await res.json();
-          const items: RestaurantItem[] = (data.places || []).map((p: any) => ({
+          const items: RestaurantItem[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean; address?: string; isVegetarian?: boolean }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,

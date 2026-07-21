@@ -54,23 +54,23 @@ export default function RestaurantManagementPage() {
     photoUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
   });
 
-  const fetchPlaces = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/places");
-      if (res.ok) {
-        const data = await res.json();
-        setRestaurants(data.places || []);
-      }
-    } catch (err) {
-      console.error("Failed to load restaurants", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchPlaces();
+    let isMounted = true;
+    fetch("/api/places")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (isMounted && data?.places) {
+          setRestaurants(data.places);
+        }
+      })
+      .catch((err) => console.error("Failed to load restaurants", err))
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleCityChange = (cityVal: string) => {
@@ -207,7 +207,7 @@ export default function RestaurantManagementPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-sm text-zinc-500">
-            No restaurants found matching "{search}".
+            No restaurants found matching &quot;{search}&quot;.
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
