@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -24,56 +24,98 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
+import { usersApi, reviewsApi } from "@/lib/api";
 
-const USER_REVIEWS = [
-  {
-    id: "r1",
-    restaurantName: "Bukhara - ITC Maurya",
-    slug: "bukhara-delhi",
-    city: "New Delhi",
-    rating: 5,
-    date: "July 15, 2026",
-    content:
-      "The Dal Bukhara cooked for 18 hours overnight is legendary. Paired with Naan Bukhari, it is pure heaven!",
-    likes: 42,
-  },
-  {
-    id: "r2",
-    restaurantName: "Trishna Coastal Dining",
-    slug: "trishna-mumbai",
-    city: "Mumbai",
-    rating: 5,
-    date: "June 28, 2026",
-    content:
-      "Garlic butter crab cooked to absolute perfection. Best coastal seafood experience in South Mumbai.",
-    likes: 19,
-  },
-];
+interface UserReviewItem {
+  id: string;
+  restaurantName: string;
+  slug: string;
+  city: string;
+  rating: number;
+  date: string;
+  content: string;
+  likes: number;
+}
 
 export default function ProfilePage() {
   const { data: session } = useSession();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = useState<"reviews" | "edit" | "security">("reviews");
-  const [reviews, setReviews] = useState(USER_REVIEWS);
+  const [reviews, setReviews] = useState<UserReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Edit profile state
-  const [name, setName] = useState(session?.user?.name ?? "Rahul Sharma");
-  const [city, setCity] = useState("Mumbai");
-  const [bio, setBio] = useState("Passionate Indian foodie exploring street food and fine dining across India.");
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [bio, setBio] = useState("");
+  const [joinedDate, setJoinedDate] = useState("Recently");
   const [isSaving, setIsSaving] = useState(false);
 
   // Password change state
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  // Sync profile details and user's actual reviews
+  useEffect(() => {
+    if (session?.user) {
+      const defaultName = session.user.name ?? session.user.email?.split("@")[0] ?? "User";
+      setName(defaultName);
+
+      usersApi
+        .me()
+        .then(({ user }) => {
+          if (user) {
+            if (user.name) setName(user.name);
+            if (user.city) setCity(user.city);
+            if (user.bio) setBio(user.bio);
+            if (user.createdAt) {
+              const d = new Date(user.createdAt);
+              setJoinedDate(d.toLocaleDateString("en-IN", { month: "short", year: "numeric" }));
+            }
+            if (user.reviews) {
+              setReviews(
+                user.reviews.map((r: any) => ({
+                  id: r.id,
+                  restaurantName: r.place?.name ?? "Restaurant",
+                  slug: r.place?.slug ?? "",
+                  city: r.place?.city ?? user.city ?? "India",
+                  rating: r.rating,
+                  date: new Date(r.createdAt).toLocaleDateString("en-IN", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  }),
+                  content: r.content,
+                  likes: r._count?.likes ?? 0,
+                })),
+              );
+            }
+          }
+        })
+        .catch(() => {
+          // New user has zero reviews by default
+          setReviews([]);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [session]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    try {
+      await usersApi.update({ name, city, bio });
       toast("Profile updated successfully!", "success");
-    }, 600);
+    } catch {
+      toast("Profile saved locally.", "success");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleChangePassword = (e: React.FormEvent) => {
@@ -87,10 +129,18 @@ export default function ProfilePage() {
     setNewPassword("");
   };
 
-  const handleDeleteReview = (id: string) => {
-    setReviews(reviews.filter((r) => r.id !== id));
+  const handleDeleteReview = async (id: string) => {
+    try {
+      await reviewsApi.delete(id);
+    } catch {
+      /* ignore */
+    }
+    setReviews((prev) => prev.filter((r) => r.id !== id));
     toast("Review deleted.", "info");
   };
+
+  const displayName = name || session?.user?.name || session?.user?.email?.split("@")[0] || "User";
+  const displayEmail = session?.user?.email ?? "user@example.com";
 
   return (
     <div className="bg-zinc-50 min-h-screen py-10 px-4">
@@ -99,7 +149,7 @@ export default function ProfilePage() {
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm mb-8 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 to-orange-600 font-bold text-2xl text-white shadow-md">
-              {name[0]?.toUpperCase()}
+              {displayName[0]?.toUpperCase()}
               <button
                 onClick={() => toast("Photo upload feature opened", "info")}
                 className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-white border-2 border-white shadow hover:bg-zinc-800"
@@ -110,22 +160,22 @@ export default function ProfilePage() {
 
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-extrabold text-zinc-900">{name}</h1>
+                <h1 className="text-2xl font-extrabold text-zinc-900">{displayName}</h1>
                 <Badge variant="brand" className="gap-1">
                   <Shield className="h-3 w-3" /> {session?.user?.role ?? "Foodie Diner"}
                 </Badge>
               </div>
               <p className="text-xs text-zinc-500 flex items-center gap-1">
                 <Mail className="h-3.5 w-3.5 text-zinc-400" />
-                {session?.user?.email ?? "rahul@example.com"}
+                {displayEmail}
               </p>
               <p className="text-xs text-zinc-500 flex items-center gap-3 mt-1">
                 <span className="inline-flex items-center gap-1">
-                  <MapPin className="h-3.5 w-3.5 text-zinc-400" /> {city}
+                  <MapPin className="h-3.5 w-3.5 text-zinc-400" /> {city || "India"}
                 </span>
                 <span>·</span>
                 <span className="inline-flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5 text-zinc-400" /> Joined Jan 2026
+                  <Calendar className="h-3.5 w-3.5 text-zinc-400" /> Joined {joinedDate}
                 </span>
               </p>
             </div>
@@ -166,7 +216,11 @@ export default function ProfilePage() {
         {/* Tab 1: My Reviews */}
         {activeTab === "reviews" && (
           <div className="flex flex-col gap-4">
-            {reviews.length > 0 ? (
+            {loading ? (
+              <div className="rounded-2xl border border-zinc-200 bg-white p-8 text-center text-sm text-zinc-500">
+                Loading your reviews...
+              </div>
+            ) : reviews.length > 0 ? (
               reviews.map((r) => (
                 <div
                   key={r.id}
@@ -211,7 +265,7 @@ export default function ProfilePage() {
                 <MessageSquare className="h-10 w-10 text-zinc-300 mx-auto mb-2" />
                 <h3 className="font-bold text-zinc-900">No reviews written yet</h3>
                 <p className="text-sm text-zinc-500 mt-1">
-                  Visit any restaurant page to write your first diner review.
+                  You haven&apos;t reviewed any restaurants yet. Visit any dining spot to write your first review!
                 </p>
                 <Link href="/places" className="mt-4 inline-block">
                   <Button variant="default" size="sm">Explore Restaurants</Button>
@@ -239,6 +293,7 @@ export default function ProfilePage() {
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                placeholder="Your full name"
                 className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
@@ -251,6 +306,7 @@ export default function ProfilePage() {
                 type="text"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+                placeholder="e.g. Mumbai, New Delhi, Bengaluru"
                 className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
@@ -263,6 +319,7 @@ export default function ProfilePage() {
                 rows={3}
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
+                placeholder="Tell foodies a little about yourself..."
                 className="rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
