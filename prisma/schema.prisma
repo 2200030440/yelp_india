@@ -67,6 +67,7 @@ model User {
   reviewLikes   ReviewLike[]
   reports       Report[]
   auditLogs     AuditLog[]
+  notifications Notification[]
 
   @@index([email])
   @@index([role])
@@ -161,6 +162,9 @@ model Place {
   // Computed / Aggregated metrics
   averageRating Float    @default(0.0)
   reviewCount   Int      @default(0)
+
+  googlePlaceId String?  @unique
+  isVegOnly     Boolean  @default(false)
 
   // Status flags
   isVerified    Boolean  @default(false)
@@ -357,4 +361,20 @@ model AuditLog {
   @@index([userId])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String   @db.Text
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
