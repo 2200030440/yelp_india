@@ -16,8 +16,6 @@ import {
   Lock,
   AlertCircle,
   CheckCircle2,
-  UserCheck,
-  ShieldCheck,
   X,
   User,
 } from "lucide-react";
@@ -91,7 +89,6 @@ export default function LoginPage() {
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -165,12 +162,6 @@ export default function LoginPage() {
         router.refresh();
       }, 600);
     }
-  };
-
-  const handleQuickFill = (emailVal: string, passVal: string) => {
-    setValue("email", emailVal);
-    setValue("password", passVal);
-    setApiError("");
   };
 
   if (success) {
@@ -310,28 +301,7 @@ export default function LoginPage() {
             </button>
           </div>
 
-          {/* Quick Demo Credentials */}
-          <div className="mb-6 rounded-2xl border border-zinc-100 bg-zinc-50 p-3.5">
-            <p className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">
-              ⚡ Quick Demo Login:
-            </p>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleQuickFill("admin@yelpindia.com", "Admin@1234")}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition-colors"
-              >
-                <ShieldCheck className="h-3.5 w-3.5" /> Admin Demo
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill("user@yelpindia.com", "User@1234")}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white py-2 text-xs font-bold text-zinc-700 hover:bg-zinc-100 transition-colors"
-              >
-                <UserCheck className="h-3.5 w-3.5 text-zinc-500" /> User Demo
-              </button>
-            </div>
-          </div>
+
 
           {/* Divider */}
           <div className="relative mb-6">
