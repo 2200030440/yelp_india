@@ -94,7 +94,7 @@ async function fetchPlacesForCity(
       },
     },
     includedTypes: ["restaurant"],
-    maxResultCount: 20,
+    maxResultCount: 5,
   };
 
   const res = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
