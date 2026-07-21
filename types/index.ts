@@ -62,6 +62,8 @@ export interface PlaceFilters {
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
+  isVegOnly?: boolean;
+  maxDistanceKm?: number;
 }
 
 // -----------------------------------------------------------------

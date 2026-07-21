@@ -41,6 +41,7 @@ interface RestaurantItem {
   badge: string | null;
   latitude?: number;
   longitude?: number;
+  isVegOnly?: boolean;
 }
 
 function PlacesContent() {
@@ -56,6 +57,8 @@ function PlacesContent() {
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
   const [minRating, setMinRating] = useState<number | null>(null);
+  const [isVegOnly, setIsVegOnly] = useState(false);
+  const [maxDistanceKm, setMaxDistanceKm] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<string>("rating");
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
@@ -66,7 +69,7 @@ function PlacesContent() {
         const res = await fetch("/api/places");
         if (res.ok) {
           const data = await res.json();
-          const items: RestaurantItem[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean; address?: string; isVegetarian?: boolean }) => ({
+          const items: RestaurantItem[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean; address?: string; isVegOnly?: boolean }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,
@@ -82,6 +85,7 @@ function PlacesContent() {
             badge: p.isFeatured ? "Featured" : null,
             latitude: p.latitude ?? undefined,
             longitude: p.longitude ?? undefined,
+            isVegOnly: p.isVegOnly || p.name.toLowerCase().includes("veg") || p.name.toLowerCase().includes("bhavan"),
           }));
           setRestaurants(items);
         }
@@ -115,6 +119,10 @@ function PlacesContent() {
       if (selectedCity !== "all" && r.city.toLowerCase() !== selectedCity.toLowerCase()) {
         return false;
       }
+      // Pure Veg filter
+      if (isVegOnly && !r.isVegOnly) {
+        return false;
+      }
       // Search query
       if (
         searchQuery &&
@@ -139,7 +147,7 @@ function PlacesContent() {
       if (sortBy === "reviewCount") return b.reviewCount - a.reviewCount;
       return b.id.localeCompare(a.id);
     });
-  }, [restaurants, selectedCategory, selectedCity, searchQuery, selectedPrice, minRating, sortBy]);
+  }, [restaurants, selectedCategory, selectedCity, searchQuery, selectedPrice, minRating, isVegOnly, sortBy]);
 
   const toggleBookmark = (slug: string) => {
     setBookmarks((prev) =>
@@ -236,6 +244,17 @@ function PlacesContent() {
           {/* Cuisine Filter Pills */}
           <div className="mt-4 flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
             <button
+              onClick={() => setIsVegOnly(!isVegOnly)}
+              className={cn(
+                "rounded-full px-4 py-1.5 text-xs font-bold transition-all shrink-0 border flex items-center gap-1",
+                isVegOnly
+                  ? "bg-emerald-600 text-white border-emerald-600 shadow-md ring-2 ring-emerald-200"
+                  : "bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100",
+              )}
+            >
+              🌱 Pure Veg Only
+            </button>
+            <button
               onClick={() => setSelectedCategory("all")}
               className={cn(
                 "rounded-full px-4 py-1.5 text-xs font-semibold transition-colors shrink-0",
@@ -282,6 +301,26 @@ function PlacesContent() {
                     Clear all
                   </button>
                 )}
+              </div>
+
+              {/* Distance Radius Filter */}
+              <div>
+                <h4 className="text-xs font-semibold text-zinc-700 uppercase tracking-wider mb-2">
+                  Distance Radius
+                </h4>
+                <select
+                  value={maxDistanceKm ?? "all"}
+                  onChange={(e) =>
+                    setMaxDistanceKm(e.target.value === "all" ? null : Number(e.target.value))
+                  }
+                  className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-2 text-xs font-medium outline-none text-zinc-900"
+                >
+                  <option value="all">Any distance</option>
+                  <option value="2">Within 2 km</option>
+                  <option value="5">Within 5 km</option>
+                  <option value="10">Within 10 km</option>
+                  <option value="25">Within 25 km</option>
+                </select>
               </div>
 
               {/* Price Level */}

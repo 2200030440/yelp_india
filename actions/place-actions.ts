@@ -75,6 +75,10 @@ export async function getPlacesAction(
       whereClause.priceLevel = { in: priceLevel };
     }
 
+    if (filters.isVegOnly) {
+      whereClause.isVegOnly = true;
+    }
+
     if (search) {
       whereClause.OR = [
         { name: { contains: search, mode: "insensitive" } },

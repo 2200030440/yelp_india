@@ -17,6 +17,7 @@ export interface RestaurantCardProps {
   isOpen?: boolean;
   badge?: string | null;
   isSaved?: boolean;
+  isVegOnly?: boolean;
   onBookmarkToggle?: (id: string) => void;
 }
 
@@ -32,6 +33,7 @@ export default function RestaurantCard({
   isOpen = true,
   badge,
   isSaved = false,
+  isVegOnly = false,
   onBookmarkToggle,
 }: RestaurantCardProps) {
   return (
@@ -47,12 +49,16 @@ export default function RestaurantCard({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-        {/* Badge */}
-        {badge && (
+        {/* Pure Veg / Featured Badge */}
+        {isVegOnly ? (
+          <span className="absolute left-3 top-3 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm flex items-center gap-1">
+            🌱 Pure Veg
+          </span>
+        ) : badge ? (
           <span className="absolute left-3 top-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-semibold text-zinc-800 shadow-sm backdrop-blur-sm">
             {badge}
           </span>
-        )}
+        ) : null}
 
         {/* Open / Closed Tag */}
         <span
