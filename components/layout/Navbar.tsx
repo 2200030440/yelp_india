@@ -32,8 +32,8 @@ export default function Navbar() {
   const navLinks = [
     { href: "/", label: "Home" },
     { href: "/places", label: "Restaurants" },
+    { href: "/map", label: "📍 Near Me" },
     { href: "/search", label: "Search Food" },
-    { href: "/map", label: "🗺 Map" },
   ];
 
   return (
