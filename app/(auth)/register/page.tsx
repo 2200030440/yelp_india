@@ -161,12 +161,21 @@ export default function RegisterPage() {
     if (!googleEmailInput || !googleEmailInput.includes("@")) return;
 
     setGoogleAuthenticating(true);
+    setApiError("");
     try {
-      await signIn("credentials", {
+      const res = await signIn("credentials", {
         email: googleEmailInput.toLowerCase().trim(),
         password: "GoogleAuthUserPassword123!",
         redirect: false,
       });
+
+      if (res?.error) {
+        setApiError("Authentication failed for this Google email. Please check and try again.");
+        setShowGoogleModal(false);
+        setGoogleAuthenticating(false);
+        return;
+      }
+
       setShowGoogleModal(false);
       setSuccess(true);
       setTimeout(() => {
@@ -174,12 +183,9 @@ export default function RegisterPage() {
         router.refresh();
       }, 600);
     } catch {
+      setApiError("Authentication error. Please try again.");
       setShowGoogleModal(false);
-      setSuccess(true);
-      setTimeout(() => {
-        router.push("/");
-        router.refresh();
-      }, 600);
+      setGoogleAuthenticating(false);
     }
   };
 
