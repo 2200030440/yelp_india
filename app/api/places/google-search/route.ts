@@ -11,7 +11,37 @@ export async function GET(request: NextRequest) {
     const lat = searchParams.get("lat") || "20.5937";
     const lng = searchParams.get("lng") || "78.9629";
     const query = searchParams.get("query") || "";
+    const googlePlaceId = searchParams.get("googlePlaceId");
     const apiKey = process.env.GOOGLE_PLACES_API_KEY || process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+    // Handle single Google Place Details query
+    if (googlePlaceId && apiKey) {
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${googlePlaceId}&fields=name,formatted_address,geometry,formatted_phone_number,website,rating,user_ratings_total,price_level,photos,opening_hours&key=${apiKey}`;
+      const detailsRes = await fetch(detailsUrl);
+      if (detailsRes.ok) {
+        const detailsData = await detailsRes.json();
+        const result = detailsData.result;
+        if (result) {
+          const placeDetails = {
+            googlePlaceId: googlePlaceId,
+            name: result.name,
+            address: result.formatted_address || "Nearby",
+            city: result.formatted_address?.split(",")?.slice(-3)?.[0]?.trim() || "India",
+            latitude: result.geometry?.location?.lat ?? Number(lat),
+            longitude: result.geometry?.location?.lng ?? Number(lng),
+            phone: result.formatted_phone_number || null,
+            website: result.website || null,
+            rating: result.rating || 4.5,
+            reviewCount: result.user_ratings_total || 10,
+            priceLevel: result.price_level || 2,
+            photos: (result.photos || []).map((p: { photo_reference: string }) =>
+              `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${p.photo_reference}&key=${apiKey}`
+            ),
+          };
+          return NextResponse.json({ place: placeDetails, source: "google-details" });
+        }
+      }
+    }
 
     if (apiKey) {
       // 1. Google Places Nearby Search API Integration
