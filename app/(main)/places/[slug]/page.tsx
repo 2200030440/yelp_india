@@ -1,6 +1,6 @@
 // app/(main)/places/[slug]/page.tsx
-// Server Component — fetches data server-side for fast load + SEO
-// Client sub-components handle interactivity (reviews, save, upload)
+// Server Component — queries Prisma directly server-side for ultra-fast Vercel rendering & SEO.
+// Client sub-components handle interactivity (reviews, save, photo upload).
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -24,68 +24,105 @@ import {
 import PhotoGallery from "@/components/common/PhotoGallery";
 import { Badge } from "@/components/ui/badge";
 import { cn, formatRating, formatPriceLevel } from "@/lib/utils";
+import { prisma } from "@/lib/prisma";
+import { dynamicPlaces } from "@/lib/restaurant-store";
 import ReviewSection from "./ReviewSection";
 import PlaceSaveButton from "./PlaceSaveButton";
-
 import MapWrapper from "./MapWrapper";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+async function getPlaceBySlug(slug: string) {
+  try {
+    const place = await prisma.place.findUnique({
+      where: { slug, deletedAt: null },
+      include: {
+        category: { select: { name: true, slug: true, icon: true } },
+        photos: { where: { deletedAt: null }, orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }] },
+        openingHours: { orderBy: { dayOfWeek: "asc" } },
+        amenities: { include: { amenity: true } },
+        reviews: {
+          where: { deletedAt: null, isApproved: true },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          include: {
+            user: { select: { id: true, name: true, image: true } },
+            photos: { where: { deletedAt: null }, take: 3 },
+          },
+        },
+        _count: {
+          select: {
+            reviews: { where: { deletedAt: null, isApproved: true } },
+            favorites: true,
+            photos: { where: { deletedAt: null } },
+          },
+        },
+      },
+    });
+
+    if (place) return place;
+  } catch (err) {
+    console.warn("DB query error in getPlaceBySlug:", err);
+  }
+
+  // Fallback store
+  const storePlace = dynamicPlaces.getBySlug(slug);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (storePlace) return storePlace as any;
+
+  return null;
+}
+
 // ── Metadata ─────────────────────────────────────────────────────────────
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/places/${slug}`,
-      { next: { revalidate: 300 } },
-    );
-    if (!res.ok) return { title: "Place Not Found" };
-    const { place } = await res.json();
-    return {
-      title:       `${place.name} — ${place.city} | YelpIndia`,
-      description: place.description ?? `${place.name} in ${place.city}. Rated ${place.averageRating}/5 based on ${place.reviewCount} reviews.`,
-      openGraph: {
-        title:  place.name,
-        images: place.photos[0] ? [{ url: place.photos[0].url }] : [],
-      },
-    };
-  } catch {
-    return { title: "Place | YelpIndia" };
-  }
+  const place = await getPlaceBySlug(slug);
+  if (!place) return { title: "Place Not Found" };
+
+  return {
+    title: `${place.name} — ${place.city} | YelpIndia`,
+    description: place.description ?? `${place.name} in ${place.city}. Rated ${place.averageRating}/5.`,
+    openGraph: {
+      title: place.name,
+      images: place.photos[0] ? [{ url: place.photos[0].url }] : [],
+    },
+  };
 }
 
 // ── Day ordering helper ───────────────────────────────────────────────────
 
-const DAY_ORDER = ["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY","SUNDAY"];
-const DAY_LABELS: Record<string,string> = {
-  MONDAY:"Mon", TUESDAY:"Tue", WEDNESDAY:"Wed", THURSDAY:"Thu",
-  FRIDAY:"Fri", SATURDAY:"Sat", SUNDAY:"Sun",
+const DAY_ORDER = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Mon",
+  TUESDAY: "Tue",
+  WEDNESDAY: "Wed",
+  THURSDAY: "Thu",
+  FRIDAY: "Fri",
+  SATURDAY: "Sat",
+  SUNDAY: "Sun",
 };
 
 const AMENITY_ICONS: Record<string, React.FC<{ className?: string }>> = {
-  WiFi:         Wifi,
-  Parking:      Car,
+  WiFi: Wifi,
+  Parking: Car,
   "Valet Parking": Car,
   "Air Conditioned": Sun,
-  "Full Bar":   Utensils,
-  Default:      CheckCircle2,
+  "Full Bar": Utensils,
+  Default: CheckCircle2,
 };
 
-// ── Page ─────────────────────────────────────────────────────────────────
+// ── Page Component ───────────────────────────────────────────────────────
 
 export default async function PlaceDetailPage({ params }: PageProps) {
   const { slug } = await params;
+  const place = await getPlaceBySlug(slug);
 
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/api/places/${slug}`,
-    { next: { revalidate: 300 } },
-  );
-
-  if (!res.ok) notFound();
-  const { place } = await res.json();
+  if (!place) {
+    notFound();
+  }
 
   const sortedHours = [...(place.openingHours ?? [])].sort(
     (a: { dayOfWeek: string }, b: { dayOfWeek: string }) =>
@@ -93,7 +130,10 @@ export default async function PlaceDetailPage({ params }: PageProps) {
   );
 
   const galleryPhotos = place.photos?.length
-    ? place.photos.map((p: { url: string; caption?: string }) => ({ url: p.url, caption: p.caption }))
+    ? place.photos.map((p: { url: string; caption?: string | null }) => ({
+        url: p.url,
+        caption: p.caption ?? undefined,
+      }))
     : [
         { url: "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=1200&q=80" },
         { url: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80" },
@@ -107,9 +147,13 @@ export default async function PlaceDetailPage({ params }: PageProps) {
         <div className="container">
           {/* Breadcrumb */}
           <nav className="mb-4 flex items-center gap-2 text-xs text-zinc-400">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
+            <Link href="/" className="hover:text-white transition-colors">
+              Home
+            </Link>
             <span>/</span>
-            <Link href="/places" className="hover:text-white transition-colors">Restaurants</Link>
+            <Link href="/places" className="hover:text-white transition-colors">
+              Restaurants
+            </Link>
             <span>/</span>
             <span className="text-zinc-200">{place.name}</span>
           </nav>
@@ -131,7 +175,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                 )}
               </div>
               <p className="mt-2 text-sm text-zinc-300">
-                {place.category?.name} · {place.city} · {formatPriceLevel(place.priceLevel)}
+                {place.category?.name} · {place.city} · {formatPriceLevel(place.priceLevel ?? 2)}
               </p>
               <div className="mt-3 flex items-center gap-3">
                 <div className="flex items-center gap-1">
@@ -183,7 +227,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
             )}
 
             {/* Amenities */}
-            {place.amenities?.length > 0 && (
+            {place.amenities && place.amenities.length > 0 && (
               <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
                 <h2 className="text-xl font-bold text-zinc-900 mb-4">Amenities & Services</h2>
                 <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -200,11 +244,15 @@ export default async function PlaceDetailPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* Reviews — client interactive component */}
+            {/* Reviews */}
             <ReviewSection
               placeId={place.id}
               placeName={place.name}
-              initialReviews={place.reviews ?? []}
+              initialReviews={((place.reviews ?? []).map((r: any) => ({
+                ...r,
+                user: r.user || { id: "u1", name: "Diner", image: null },
+                _count: { likes: r.likeCount ?? 0 },
+              }))) as unknown as import("@/lib/api").Review[]}
               reviewCount={place._count?.reviews ?? place.reviewCount}
             />
 
@@ -221,19 +269,27 @@ export default async function PlaceDetailPage({ params }: PageProps) {
               </h3>
               <div className="flex items-start gap-3 text-sm text-zinc-700">
                 <MapPin className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
-                <span>{place.address}, {place.city}, {place.state}</span>
+                <span>
+                  {place.address}, {place.city}, {place.state}
+                </span>
               </div>
               {place.phone && (
                 <div className="flex items-center gap-3 text-sm text-zinc-700">
                   <Phone className="h-4 w-4 text-red-600 shrink-0" />
-                  <a href={`tel:${place.phone}`} className="hover:underline">{place.phone}</a>
+                  <a href={`tel:${place.phone}`} className="hover:underline">
+                    {place.phone}
+                  </a>
                 </div>
               )}
               {place.website && (
                 <div className="flex items-center gap-3 text-sm text-zinc-700">
                   <Globe className="h-4 w-4 text-red-600 shrink-0" />
-                  <a href={place.website} target="_blank" rel="noopener noreferrer"
-                     className="text-red-600 hover:underline truncate">
+                  <a
+                    href={place.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-red-600 hover:underline truncate"
+                  >
                     Visit Website
                   </a>
                 </div>
@@ -265,11 +321,15 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                 <div className="flex flex-col gap-2.5 text-xs">
                   {sortedHours.map((h: { dayOfWeek: string; isClosed: boolean; openTime: string; closeTime: string }) => (
                     <div key={h.dayOfWeek} className="flex justify-between text-zinc-600">
-                      <span className="font-semibold text-zinc-800">{DAY_LABELS[h.dayOfWeek] ?? h.dayOfWeek}</span>
+                      <span className="font-semibold text-zinc-800">
+                        {DAY_LABELS[h.dayOfWeek] ?? h.dayOfWeek}
+                      </span>
                       {h.isClosed ? (
                         <span className="text-red-500">Closed</span>
                       ) : (
-                        <span>{h.openTime} – {h.closeTime}</span>
+                        <span>
+                          {h.openTime} – {h.closeTime}
+                        </span>
                       )}
                     </div>
                   ))}
@@ -298,8 +358,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
   );
 }
 
-// ── Photo Upload Section (client island) ──────────────────────────────────
-
 function PhotoUploadSection({ placeName }: { placeName: string }) {
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
@@ -307,8 +365,7 @@ function PhotoUploadSection({ placeName }: { placeName: string }) {
         <Camera className="h-5 w-5 text-red-600" /> Add Your Photos
       </h2>
       <p className="text-sm text-zinc-500">
-        Help other diners by sharing your experience photos of {placeName}.
-        Upload them from the button below.
+        Help other diners by sharing your experience photos of {placeName}. Upload them from the button below.
       </p>
       <Link
         href="#upload"
