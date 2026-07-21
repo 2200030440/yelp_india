@@ -1,29 +1,25 @@
 // app/api/places/nearby/route.ts
-// GET /api/places/nearby?lat=xx&lng=xx&radius=5000&type=restaurant
-// Calls Google Places Nearby Search v1 API and returns live restaurant data.
-// Also auto-syncs each result into Supabase so detail pages work.
+// GET /api/places/nearby?lat=xx&lng=xx&radius=5000
+// Uses Google Places API (New) v1 — Nearby Search endpoint.
+// Auto-syncs each result into Supabase so detail & review pages work immediately.
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 const GOOGLE_API_KEY = process.env.GOOGLE_PLACES_API_KEY ?? "";
 
-interface GooglePlace {
-  place_id: string;
-  name: string;
-  vicinity: string;
-  geometry: { location: { lat: number; lng: number } };
+interface NewPlaceResult {
+  id: string;
+  displayName?: { text: string };
+  formattedAddress?: string;
+  location?: { latitude: number; longitude: number };
   rating?: number;
-  user_ratings_total?: number;
-  price_level?: number;
+  userRatingCount?: number;
+  priceLevel?: string;
+  photos?: Array<{ name: string }>;
   types?: string[];
-  opening_hours?: { open_now?: boolean };
-  photos?: Array<{ photo_reference: string }>;
-  plus_code?: { compound_code?: string };
-}
-
-function getPhotoUrl(ref: string, maxWidth = 600) {
-  return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxWidth}&photo_reference=${ref}&key=${GOOGLE_API_KEY}`;
+  currentOpeningHours?: { openNow?: boolean };
+  regularOpeningHours?: { openNow?: boolean };
 }
 
 function slugify(text: string, placeId: string) {
@@ -31,21 +27,30 @@ function slugify(text: string, placeId: string) {
     .toLowerCase()
     .replace(/[^a-z0-9\s]/g, "")
     .trim()
-    .replace(/\s+/g, "-");
+    .replace(/\s+/g, "-")
+    .slice(0, 50);
   return `${base}-${placeId.slice(-6)}`;
 }
 
-function inferCategory(types: string[]) {
-  if (types.includes("bakery")) return "bakery";
-  if (types.includes("cafe")) return "cafe";
-  if (types.includes("bar")) return "bar";
-  if (types.includes("meal_delivery") || types.includes("meal_takeaway")) return "street-food";
-  return "north-indian";
+function parsePriceLevel(level?: string): number {
+  switch (level) {
+    case "PRICE_LEVEL_FREE":           return 1;
+    case "PRICE_LEVEL_INEXPENSIVE":    return 1;
+    case "PRICE_LEVEL_MODERATE":       return 2;
+    case "PRICE_LEVEL_EXPENSIVE":      return 3;
+    case "PRICE_LEVEL_VERY_EXPENSIVE": return 4;
+    default: return 2;
+  }
 }
 
-function extractCity(vicinity: string): string {
-  const parts = vicinity.split(",");
-  return parts[parts.length - 1]?.trim() || "India";
+function getPhotoUrl(photoName: string): string {
+  return `https://places.googleapis.com/v1/${photoName}/media?maxWidthPx=600&key=${GOOGLE_API_KEY}`;
+}
+
+function extractCity(address: string, fallback: string): string {
+  const parts = address.split(",");
+  if (parts.length >= 3) return parts[parts.length - 3].trim();
+  return fallback;
 }
 
 export async function GET(req: NextRequest) {
@@ -53,8 +58,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const lat = searchParams.get("lat");
     const lng = searchParams.get("lng");
-    const radius = searchParams.get("radius") ?? "5000";
-    const keyword = searchParams.get("keyword") ?? "restaurant";
+    const radius = Number(searchParams.get("radius") ?? "5000");
 
     if (!lat || !lng) {
       return NextResponse.json({ error: "lat and lng are required" }, { status: 400 });
@@ -64,42 +68,51 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Google Places API key not configured" }, { status: 500 });
     }
 
-    // ── Call Google Places Nearby Search ─────────────────────────────────
-    const googleUrl =
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json` +
-      `?location=${lat},${lng}` +
-      `&radius=${radius}` +
-      `&type=restaurant` +
-      `&keyword=${encodeURIComponent(keyword)}` +
-      `&key=${GOOGLE_API_KEY}`;
-
-    const googleRes = await fetch(googleUrl, { next: { revalidate: 300 } });
-
-    if (!googleRes.ok) {
-      return NextResponse.json({ error: "Failed to fetch from Google Places" }, { status: 502 });
-    }
+    // ── Call Google Places API (New) — Nearby Search ──────────────────────
+    const googleRes = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": GOOGLE_API_KEY,
+        "X-Goog-FieldMask":
+          "places.id,places.displayName,places.formattedAddress,places.location," +
+          "places.rating,places.userRatingCount,places.priceLevel,places.photos," +
+          "places.types,places.currentOpeningHours,places.regularOpeningHours",
+      },
+      body: JSON.stringify({
+        locationRestriction: {
+          circle: {
+            center: { latitude: Number(lat), longitude: Number(lng) },
+            radius,
+          },
+        },
+        includedTypes: ["restaurant"],
+        maxResultCount: 20,
+        languageCode: "en",
+      }),
+    });
 
     const googleData = await googleRes.json();
 
-    if (googleData.status !== "OK" && googleData.status !== "ZERO_RESULTS") {
-      console.error("[nearby] Google API status:", googleData.status, googleData.error_message);
+    if (googleData.error) {
+      console.error("[nearby] Google API error:", googleData.error);
       return NextResponse.json(
-        { error: `Google API error: ${googleData.status}`, places: [] },
+        { error: `Google API: ${googleData.error.status}`, places: [] },
         { status: 200 },
       );
     }
 
-    const results: GooglePlace[] = googleData.results ?? [];
+    const results: NewPlaceResult[] = googleData.places ?? [];
 
-    // ── Ensure default category slugs exist ──────────────────────────────
-    const categoryDefaults = [
-      { slug: "north-indian",  name: "North Indian",  icon: "🍛", color: "#ef4444" },
-      { slug: "cafe",          name: "Café",           icon: "☕", color: "#8b5cf6" },
-      { slug: "bakery",        name: "Bakery",         icon: "🧁", color: "#f59e0b" },
-      { slug: "bar",           name: "Bar & Grill",    icon: "🍺", color: "#3b82f6" },
-      { slug: "street-food",   name: "Street Food",    icon: "🌮", color: "#10b981" },
+    // ── Ensure default categories exist ──────────────────────────────────
+    const catDefaults = [
+      { slug: "north-indian", name: "North Indian", icon: "🍛" },
+      { slug: "cafe",         name: "Café",          icon: "☕" },
+      { slug: "bakery",       name: "Bakery",        icon: "🧁" },
+      { slug: "bar",          name: "Bar & Grill",   icon: "🍺" },
+      { slug: "street-food",  name: "Street Food",   icon: "🌮" },
     ];
-    for (const cat of categoryDefaults) {
+    for (const cat of catDefaults) {
       try {
         await prisma.category.upsert({
           where: { slug: cat.slug },
@@ -109,20 +122,50 @@ export async function GET(req: NextRequest) {
       } catch { /* ignore */ }
     }
 
+    // ── Ensure admin user exists for valid Photo relations ───────────────
+    let admin = await prisma.user.findFirst({
+      where: { role: "ADMIN" },
+    });
+    if (!admin) {
+      admin = await prisma.user.create({
+        data: {
+          name: "Yelp Admin",
+          email: "admin@yelpindia.com",
+          role: "ADMIN",
+          city: "Mumbai",
+        },
+      });
+    }
+    const adminId = admin.id;
+
     // ── Upsert each place into Supabase ──────────────────────────────────
     const places = await Promise.all(
-      results.slice(0, 20).map(async (p) => {
-        const slug = slugify(p.name, p.place_id);
-        const city = extractCity(p.vicinity);
-        const catSlug = inferCategory(p.types ?? []);
+      results.map(async (p) => {
+        const name = p.displayName?.text;
+        if (!name) return null;
+
+        const slug = slugify(name, p.id);
+        const address = p.formattedAddress ?? "India";
+        const city = extractCity(address, "India");
         const photoUrl = p.photos?.[0]
-          ? getPhotoUrl(p.photos[0].photo_reference)
+          ? getPhotoUrl(p.photos[0].name)
           : "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80";
+
+        const isOpen =
+          p.currentOpeningHours?.openNow ??
+          p.regularOpeningHours?.openNow ??
+          true;
+
+        let catSlug = "north-indian";
+        const types = p.types ?? [];
+        if (types.includes("bakery")) catSlug = "bakery";
+        else if (types.includes("cafe")) catSlug = "cafe";
+        else if (types.includes("bar")) catSlug = "bar";
 
         try {
           const existing = await prisma.place.findFirst({
-            where: { googlePlaceId: p.place_id },
-            include: { photos: { take: 1 }, category: true },
+            where: { googlePlaceId: p.id },
+            include: { photos: { take: 1 }, category: { select: { name: true } } },
           });
 
           if (existing) {
@@ -131,40 +174,38 @@ export async function GET(req: NextRequest) {
               name: existing.name,
               slug: existing.slug,
               city: existing.city,
-              state: existing.state,
               address: existing.address,
               latitude: existing.latitude,
               longitude: existing.longitude,
               averageRating: existing.averageRating,
               reviewCount: existing.reviewCount,
               priceLevel: existing.priceLevel,
-              isOpen: p.opening_hours?.open_now ?? true,
+              isOpen,
               category: existing.category?.name ?? "Restaurant",
               primaryPhotoUrl: existing.photos[0]?.url ?? photoUrl,
-              googlePlaceId: p.place_id,
+              googlePlaceId: p.id,
             };
           }
 
-          // Create new place record
           const created = await prisma.place.create({
             data: {
-              name: p.name,
+              name,
               slug,
-              address: p.vicinity,
+              address,
               city,
               state: city,
-              latitude: p.geometry.location.lat,
-              longitude: p.geometry.location.lng,
+              latitude: p.location?.latitude,
+              longitude: p.location?.longitude,
               averageRating: p.rating ?? 4.0,
-              reviewCount: p.user_ratings_total ?? 0,
-              priceLevel: p.price_level ?? 2,
-              googlePlaceId: p.place_id,
+              reviewCount: p.userRatingCount ?? 0,
+              priceLevel: parsePriceLevel(p.priceLevel),
+              googlePlaceId: p.id,
               isVerified: false,
               isFeatured: false,
               isVegOnly: false,
               category: { connect: { slug: catSlug } },
               photos: {
-                create: [{ url: photoUrl, isPrimary: true, userId: "system" }],
+                create: [{ url: photoUrl, isPrimary: true, userId: adminId }],
               },
             },
             include: { photos: { take: 1 }, category: { select: { name: true } } },
@@ -175,46 +216,45 @@ export async function GET(req: NextRequest) {
             name: created.name,
             slug: created.slug,
             city: created.city,
-            state: created.state,
             address: created.address,
             latitude: created.latitude,
             longitude: created.longitude,
             averageRating: created.averageRating,
             reviewCount: created.reviewCount,
             priceLevel: created.priceLevel,
-            isOpen: p.opening_hours?.open_now ?? true,
+            isOpen,
             category: created.category?.name ?? "Restaurant",
             primaryPhotoUrl: created.photos[0]?.url ?? photoUrl,
-            googlePlaceId: p.place_id,
+            googlePlaceId: p.id,
           };
         } catch (err) {
-          console.warn(`[nearby] upsert failed for ${p.name}:`, err);
-          // Return data from Google even if DB upsert fails
+          console.warn(`[nearby] upsert failed for ${name}:`, (err as Error).message?.slice(0, 60));
+          // Return Google data directly even if DB save fails
           return {
-            id: p.place_id,
-            name: p.name,
+            id: p.id,
+            name,
             slug,
             city,
-            state: city,
-            address: p.vicinity,
-            latitude: p.geometry.location.lat,
-            longitude: p.geometry.location.lng,
+            address,
+            latitude: p.location?.latitude,
+            longitude: p.location?.longitude,
             averageRating: p.rating ?? 4.0,
-            reviewCount: p.user_ratings_total ?? 0,
-            priceLevel: p.price_level ?? 2,
-            isOpen: p.opening_hours?.open_now ?? true,
+            reviewCount: p.userRatingCount ?? 0,
+            priceLevel: parsePriceLevel(p.priceLevel),
+            isOpen,
             category: "Restaurant",
             primaryPhotoUrl: photoUrl,
-            googlePlaceId: p.place_id,
+            googlePlaceId: p.id,
           };
         }
       }),
     );
 
+    const validPlaces = places.filter(Boolean);
+
     return NextResponse.json({
-      places,
-      total: places.length,
-      nextPageToken: googleData.next_page_token ?? null,
+      places: validPlaces,
+      total: validPlaces.length,
     });
   } catch (error) {
     console.error("[places/nearby] error:", error);
