@@ -2,7 +2,7 @@
 
 // components/common/PlacesMap.tsx
 // Multi-place interactive Leaflet map rendering ALL pins across India simultaneously.
-// Supports focusing camera on user location / selected city while preserving all pins across India.
+// Includes map.invalidateSize() & explicit height bounds for embedded tab view modes.
 
 import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
@@ -45,7 +45,7 @@ export default function PlacesMap({
   activePlaceId,
   userLocation,
   focusedCity,
-  height = "h-[600px]",
+  height = "h-[550px]",
   className,
   onPlaceSelect,
   onLocateUser,
@@ -123,6 +123,14 @@ export default function PlacesMap({
 
       // Trigger initial render of pins once map is ready
       renderMarkers();
+
+      // Recalculate tile sizing after DOM paint
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+          focusMapCamera();
+        }
+      }, 250);
     });
 
     return () => {
@@ -248,7 +256,7 @@ export default function PlacesMap({
       return;
     }
 
-    if (focusedCity) {
+    if (focusedCity && focusedCity !== "all") {
       const cityLower = focusedCity.toLowerCase().trim();
       const cityPlaces = places.filter((p) => p.city.toLowerCase().includes(cityLower));
       if (cityPlaces.length > 0) {
@@ -263,8 +271,11 @@ export default function PlacesMap({
       }
     }
 
-    if (places.length > 0) {
-      const bounds = L.latLngBounds(places.map((p) => [p.latitude, p.longitude]));
+    const validPlaces = places.filter(
+      (p) => p.latitude && p.longitude && !isNaN(p.latitude) && !isNaN(p.longitude),
+    );
+    if (validPlaces.length > 0) {
+      const bounds = L.latLngBounds(validPlaces.map((p) => [p.latitude, p.longitude]));
       map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     }
   };
@@ -277,7 +288,10 @@ export default function PlacesMap({
 
   // Focus camera when focusedCity changes
   useEffect(() => {
-    focusMapCamera();
+    if (mapRef.current) {
+      mapRef.current.invalidateSize();
+      focusMapCamera();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusedCity]);
 
@@ -329,7 +343,7 @@ export default function PlacesMap({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border border-zinc-200 shadow-sm relative flex flex-col",
+        "overflow-hidden rounded-2xl border border-zinc-200 shadow-sm relative flex flex-col min-h-[550px]",
         className,
       )}
     >
@@ -338,7 +352,7 @@ export default function PlacesMap({
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-red-500" />
           <span className="text-xs font-semibold text-white">
-            {validPlacesCount} total restaurant pins across India
+            {validPlacesCount} total restaurant pin{validPlacesCount !== 1 ? "s" : ""} on map
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -359,7 +373,7 @@ export default function PlacesMap({
 
       <div
         ref={mapContainerRef}
-        className={cn(height, "w-full flex-1")}
+        className={cn(height, "w-full flex-1 min-h-[500px]")}
         style={{ zIndex: 0 }}
       />
     </div>

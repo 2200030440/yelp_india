@@ -431,8 +431,8 @@ function PlacesContent() {
                   id: r.id,
                   name: r.name,
                   slug: r.slug,
-                  latitude: r.latitude ?? 20.5937,
-                  longitude: r.longitude ?? 78.9629,
+                  latitude: r.latitude ?? 16.5062,
+                  longitude: r.longitude ?? 80.6480,
                   city: r.city,
                   averageRating: r.rating,
                   reviewCount: r.reviewCount,
@@ -440,7 +440,8 @@ function PlacesContent() {
                   category: r.cuisine,
                   primaryPhotoUrl: r.image,
                 }))}
-                height="h-[500px]"
+                focusedCity={selectedCity !== "all" ? selectedCity : location.city}
+                height="h-[550px]"
               />
             )}
 
