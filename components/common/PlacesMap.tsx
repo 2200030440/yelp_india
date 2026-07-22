@@ -1,8 +1,7 @@
 "use client";
 
 // components/common/PlacesMap.tsx
-// Multi-place interactive Leaflet map rendering ALL pins across India simultaneously.
-// Includes map.invalidateSize() & explicit height bounds for embedded tab view modes.
+// Multi-place interactive Leaflet map with cluster markers & animated blue user GPS pin
 
 import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
@@ -121,8 +120,9 @@ export default function PlacesMap({
       clusterGroupRef.current = clusterGroup;
       mapRef.current = mapInstance;
 
-      // Trigger initial render of pins once map is ready
+      // Render place pins and user blue GPS dot
       renderMarkers();
+      renderUserMarker();
 
       // Recalculate tile sizing after DOM paint
       setTimeout(() => {
@@ -138,10 +138,59 @@ export default function PlacesMap({
         mapRef.current.remove();
         mapRef.current = null;
         clusterGroupRef.current = null;
+        userMarkerRef.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Function to render user location blue GPS pin
+  const renderUserMarker = () => {
+    const map = mapRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L;
+
+    if (!map || !L || !userLocation || !userLocation.latitude || !userLocation.longitude) return;
+
+    if (userMarkerRef.current) {
+      userMarkerRef.current.setLatLng([userLocation.latitude, userLocation.longitude]);
+    } else {
+      const userIcon = L.divIcon({
+        html: `
+          <div style="
+            position:relative;
+            width:26px;
+            height:26px;
+            background:#2563eb;
+            border:3px solid #ffffff;
+            border-radius:50%;
+            box-shadow:0 0 15px rgba(37,99,235,0.7);
+            display:flex;
+            align-items:center;
+            justify-content:center;
+          ">
+            <div style="
+              width:8px;
+              height:8px;
+              background:#ffffff;
+              border-radius:50%;
+            "></div>
+          </div>
+        `,
+        className: "",
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+        popupAnchor: [0, -15],
+      });
+
+      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], {
+        icon: userIcon,
+        zIndexOffset: 1000,
+      })
+        .bindPopup("<div style='font-family:system-ui;font-size:12px;font-weight:bold;color:#1e40af;'>📍 Your GPS Location</div>")
+        .addTo(map);
+    }
+  };
 
   // Function to render ALL markers across India dynamically
   const renderMarkers = () => {
@@ -241,6 +290,7 @@ export default function PlacesMap({
       markersRef.current.set(place.id, marker);
     });
 
+    renderUserMarker();
     focusMapCamera();
   };
 
@@ -308,36 +358,8 @@ export default function PlacesMap({
 
   // Update user location pin dynamically
   useEffect(() => {
-    const map = mapRef.current;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const L = (window as any).L;
-
-    if (!map || !L || !userLocation) return;
-
-    if (userMarkerRef.current) {
-      userMarkerRef.current.setLatLng([userLocation.latitude, userLocation.longitude]);
-    } else {
-      const userIcon = L.divIcon({
-        html: `
-          <div style="
-            width:22px;
-            height:22px;
-            background:#2563eb;
-            border:3px solid #fff;
-            border-radius:50%;
-            box-shadow:0 0 0 6px rgba(37,99,235,0.3);
-          "></div>
-        `,
-        className: "",
-        iconSize: [22, 22],
-        iconAnchor: [11, 11],
-      });
-      userMarkerRef.current = L.marker([userLocation.latitude, userLocation.longitude], {
-        icon: userIcon,
-      }).bindPopup("<b>📍 You Are Here</b>").addTo(map);
-    }
-
-    map.setView([userLocation.latitude, userLocation.longitude], 13, { animate: true });
+    renderUserMarker();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLocation]);
 
   // Pan to active place when selected from list
@@ -377,7 +399,7 @@ export default function PlacesMap({
             </button>
           )}
           <span className="text-xs text-zinc-400 hidden sm:inline">
-            Zoom out to view all India pins
+            Blue dot = Your Location
           </span>
         </div>
       </div>
