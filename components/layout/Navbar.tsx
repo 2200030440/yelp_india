@@ -25,7 +25,7 @@ export default function Navbar() {
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
-  const { location, detectLocation } = useLocationContext();
+  const { location, detectLocation, isMounted } = useLocationContext();
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 12);
@@ -69,7 +69,13 @@ export default function Navbar() {
             title="Click to detect current GPS location"
           >
             <MapPin className="h-3.5 w-3.5 text-red-600" />
-            <span>{location.status === "locating" ? "Locating..." : location.city}</span>
+            <span suppressHydrationWarning>
+              {!isMounted
+                ? "Hyderabad"
+                : location.status === "locating"
+                ? "Locating..."
+                : location.city}
+            </span>
           </button>
         </div>
 

@@ -1,8 +1,7 @@
 "use client";
 
 // context/LocationContext.tsx
-// Global GPS Location & Reverse-Geocoding Context
-// Automatically detects user's current city & coordinates on load
+// Hydration-safe Global GPS Location & Reverse-Geocoding Context
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 
@@ -20,12 +19,13 @@ interface LocationContextType {
   location: UserLocation;
   detectLocation: () => Promise<void>;
   setManualCity: (city: string) => void;
+  isMounted: boolean;
 }
 
 const DEFAULT_LOCATION: UserLocation = {
   latitude: null,
   longitude: null,
-  city: "Hyderabad", // Sensible default
+  city: "Hyderabad",
   area: "",
   state: "Telangana",
   status: "idle",
@@ -36,22 +36,28 @@ const LocationContext = createContext<LocationContextType>({
   location: DEFAULT_LOCATION,
   detectLocation: async () => {},
   setManualCity: () => {},
+  isMounted: false,
 });
 
 export function LocationProvider({ children }: { children: React.ReactNode }) {
-  const [location, setLocation] = useState<UserLocation>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("yelp_user_location");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          /* Fallback */
+  const [location, setLocation] = useState<UserLocation>(DEFAULT_LOCATION);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Read saved location from localStorage after client mount to prevent hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+    const saved = localStorage.getItem("yelp_user_location");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.city) {
+          setLocation(parsed);
         }
+      } catch {
+        /* Fallback */
       }
     }
-    return DEFAULT_LOCATION;
-  });
+  }, []);
 
   // Reverse geocode coordinates to City & Area via OpenStreetMap Nominatim
   const reverseGeocode = async (lat: number, lon: number) => {
@@ -88,7 +94,6 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
         localStorage.setItem("yelp_user_location", JSON.stringify(updated));
       }
     } catch {
-      // Fallback with coordinates
       const updated: UserLocation = {
         ...location,
         latitude: lat,
@@ -124,10 +129,10 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
 
   // Auto-detect on first visit if not saved
   useEffect(() => {
-    if (!location.isDetected && location.status === "idle") {
+    if (isMounted && !location.isDetected && location.status === "idle") {
       detectLocation();
     }
-  }, [location.isDetected, location.status, detectLocation]);
+  }, [isMounted, location.isDetected, location.status, detectLocation]);
 
   const setManualCity = (city: string) => {
     const updated: UserLocation = {
@@ -141,7 +146,7 @@ export function LocationProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <LocationContext.Provider value={{ location, detectLocation, setManualCity }}>
+    <LocationContext.Provider value={{ location, detectLocation, setManualCity, isMounted }}>
       {children}
     </LocationContext.Provider>
   );
