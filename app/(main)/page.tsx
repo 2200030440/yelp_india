@@ -25,7 +25,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { cn, formatRating, formatPriceLevel } from "@/lib/utils";
-import { INDIAN_CITIES } from "@/constants";
+import CitySelector from "@/components/common/CitySelector";
 
 // ─── Restaurant Data ─────────────────────────────────────────────────────────
 
@@ -290,34 +290,23 @@ function HeroSearch() {
         className="flex flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row"
       >
         {/* Query input */}
-        <div className="flex flex-1 items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-zinc-200 focus-within:ring-2 focus-within:ring-red-500">
+        <div className="flex flex-1 items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 transition-all focus-within:border-zinc-400 focus-within:shadow-xs">
           <Search className="h-4 w-4 shrink-0 text-zinc-400" />
           <input
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Biryani, Butter Chicken, Cafes, Rooftop…"
-            className="w-full text-sm text-zinc-900 placeholder-zinc-400 outline-none"
+            className="w-full text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
           />
         </div>
 
-        {/* City input */}
-        <div className="flex items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-zinc-200 focus-within:ring-2 focus-within:ring-red-500 sm:w-44">
-          <MapPin className="h-4 w-4 shrink-0 text-zinc-400" />
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="Mumbai, Delhi…"
-            className="w-full text-sm text-zinc-900 placeholder-zinc-400 outline-none"
-            list="cities"
-          />
-          <datalist id="cities">
-            {INDIAN_CITIES.slice(0, 20).map((c) => (
-              <option key={c} value={c} />
-            ))}
-          </datalist>
-        </div>
+        {/* Custom Premium City Selector */}
+        <CitySelector
+          value={city}
+          onChange={setCity}
+          placeholder="Location / City..."
+        />
 
         {/* Search button */}
         <button
