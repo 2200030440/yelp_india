@@ -314,7 +314,6 @@ export default function MapPage() {
   const { location } = useLocationContext();
   const [places, setPlaces] = useState<PlacePin[]>(INITIAL_PLACES);
   const [activePlaceId, setActivePlaceId] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedCity, setSelectedCity] = useState<string>(location.city || "");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userLocation, setUserLocation] = useState<{
@@ -443,33 +442,40 @@ export default function MapPage() {
   };
 
   const filteredPlaces = useMemo(() => {
-    const q = searchQuery.toLowerCase().trim();
-    let result = places;
-    if (q) {
-      result = places.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.city.toLowerCase().includes(q) ||
-          p.category?.toLowerCase().includes(q),
-      );
+    const targetCity = (selectedCity || "").toLowerCase().trim();
+
+    // 1. If a specific city is selected in dropdown (e.g. Vijayawada, Hyderabad, Bengaluru, Guntur)
+    if (targetCity && targetCity !== "all") {
+      const cityMatches = places.filter((p) => p.city.toLowerCase().includes(targetCity));
+      const otherPlaces = places.filter((p) => !p.city.toLowerCase().includes(targetCity));
+
+      if (userLocation) {
+        cityMatches.sort((a, b) => {
+          const dA = getDistanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
+          const dB = getDistanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude);
+          return dA - dB;
+        });
+        otherPlaces.sort((a, b) => {
+          const dA = getDistanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
+          const dB = getDistanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude);
+          return dA - dB;
+        });
+      }
+
+      return [...cityMatches, ...otherPlaces];
     }
 
-    const targetCity = (selectedCity || location.city || "").toLowerCase().trim();
-
-    return [...result].sort((a, b) => {
-      // 1. If GPS location available, sort by distance in km
-      if (userLocation) {
+    // 2. If no city selected (e.g. Near Me mode), sort all places by distance from user GPS
+    if (userLocation) {
+      return [...places].sort((a, b) => {
         const dA = getDistanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
         const dB = getDistanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude);
         return dA - dB;
-      }
-      // 2. Prioritize target city places to appear AT THE TOP OF THE LIST
-      const aMatch = targetCity && a.city.toLowerCase().includes(targetCity) ? 1 : 0;
-      const bMatch = targetCity && b.city.toLowerCase().includes(targetCity) ? 1 : 0;
-      if (aMatch !== bMatch) return bMatch - aMatch;
-      return 0;
-    });
-  }, [places, searchQuery, userLocation, location.city, selectedCity]);
+      });
+    }
+
+    return places;
+  }, [places, userLocation, selectedCity]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -497,27 +503,8 @@ export default function MapPage() {
           </button>
         </div>
 
-        {/* Search & City Filter */}
+        {/* City Filter */}
         <div className="border-b border-zinc-100 p-3 flex flex-col gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search places, cuisines…"
-              className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-
           <CitySelector
             value={selectedCity}
             onChange={setSelectedCity}
