@@ -251,24 +251,35 @@ export default function PlacesMap({
     const L = (window as any).L;
     if (!map || !L) return;
 
-    if (userLocation) {
-      map.setView([userLocation.latitude, userLocation.longitude], 13, { animate: true });
-      return;
+    // 1. If explicit active place is selected -> pan to place
+    if (activePlaceId) {
+      const place = places.find((p) => p.id === activePlaceId);
+      if (place && place.latitude && place.longitude) {
+        map.setView([place.latitude, place.longitude], 15, { animate: true });
+        return;
+      }
     }
 
+    // 2. If a specific city is selected in dropdown -> pan to that city!
     if (focusedCity && focusedCity !== "all") {
       const cityLower = focusedCity.toLowerCase().trim();
       const cityPlaces = places.filter((p) => p.city.toLowerCase().includes(cityLower));
       if (cityPlaces.length > 0) {
         const bounds = L.latLngBounds(cityPlaces.map((p) => [p.latitude, p.longitude]));
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
         return;
       }
       const coordLookup = CITY_COORDINATES[cityLower];
       if (coordLookup) {
-        map.setView([coordLookup.lat, coordLookup.lng], 12, { animate: true });
+        map.setView([coordLookup.lat, coordLookup.lng], 13, { animate: true });
         return;
       }
+    }
+
+    // 3. If "Locate Me" button was clicked -> pan to user location
+    if (userLocation) {
+      map.setView([userLocation.latitude, userLocation.longitude], 13, { animate: true });
+      return;
     }
 
     const validPlaces = places.filter(

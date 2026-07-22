@@ -424,6 +424,7 @@ export default function MapPage() {
       alert("Geolocation is not supported by your browser");
       return;
     }
+    setSelectedCity("");
     setNearbyStatus("locating");
     navigator.geolocation.getCurrentPosition(
       (pos) => {

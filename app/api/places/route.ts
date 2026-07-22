@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const featured   = searchParams.get("featured") === "true";
     const sortBy     = searchParams.get("sort") ?? "rating";
     const page       = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
-    const limit      = Math.min(500, parseInt(searchParams.get("limit") ?? "100"));
+    const limit      = Math.min(2000, parseInt(searchParams.get("limit") ?? "100"));
     const skip       = (page - 1) * limit;
 
     try {
