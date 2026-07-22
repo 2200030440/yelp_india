@@ -169,6 +169,15 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state:
   "ranchi": { lat: 23.3441, lng: 85.3096, state: "Jharkhand" },
   "coimbatore": { lat: 11.0168, lng: 76.9558, state: "Tamil Nadu" },
   "mysuru": { lat: 12.2958, lng: 76.6394, state: "Karnataka" },
+  "vijayawada": { lat: 16.5062, lng: 80.6480, state: "Andhra Pradesh" },
+  "vijawada": { lat: 16.5062, lng: 80.6480, state: "Andhra Pradesh" },
+  "vijaywada": { lat: 16.5062, lng: 80.6480, state: "Andhra Pradesh" },
+  "guntur": { lat: 16.3067, lng: 80.4365, state: "Andhra Pradesh" },
+  "visakhapatnam": { lat: 17.6868, lng: 83.2185, state: "Andhra Pradesh" },
+  "vizag": { lat: 17.6868, lng: 83.2185, state: "Andhra Pradesh" },
+  "tirupati": { lat: 13.6288, lng: 79.4192, state: "Andhra Pradesh" },
+  "kakinada": { lat: 16.9891, lng: 82.2475, state: "Andhra Pradesh" },
+  "warangal": { lat: 17.9689, lng: 79.5941, state: "Telangana" },
 };
 
 // -----------------------------------------------------------------

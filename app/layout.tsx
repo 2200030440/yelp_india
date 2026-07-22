@@ -4,6 +4,7 @@ import "./globals.css";
 import { siteConfig } from "@/config/site";
 import AuthProvider from "@/providers/AuthProvider";
 import { ToastProvider } from "@/components/ui/toast";
+import { LocationProvider } from "@/context/LocationContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -70,9 +71,11 @@ export default function RootLayout({
   return (
     <html lang="en-IN" className={`${inter.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full bg-background font-sans antialiased">
-        <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
-        </AuthProvider>
+        <LocationProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
+        </LocationProvider>
       </body>
     </html>
   );

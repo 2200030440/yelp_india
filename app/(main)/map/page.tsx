@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn, formatPriceLevel, getDistanceKm, formatDistance } from "@/lib/utils";
 import { type PlacePin } from "@/components/common/PlacesMap";
+import { useLocationContext } from "@/context/LocationContext";
 
 // Load PlacesMap client-only (no SSR — Leaflet uses window)
 const PlacesMap = dynamic(
@@ -309,6 +310,7 @@ function PlaceListCard({
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function MapPage() {
+  const { location } = useLocationContext();
   const [places, setPlaces] = useState<PlacePin[]>(INITIAL_PLACES);
   const [activePlaceId, setActivePlaceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -319,11 +321,19 @@ export default function MapPage() {
   } | null>(null);
   const [nearbyStatus, setNearbyStatus] = useState<"idle" | "locating" | "fetching" | "done" | "error">("idle");
 
-  // Load DB-seeded places on mount
+  // Sync LocationContext with userLocation state & fetch places for detected city
+  useEffect(() => {
+    if (location.latitude && location.longitude) {
+      setUserLocation({ latitude: location.latitude, longitude: location.longitude });
+    }
+  }, [location.latitude, location.longitude]);
+
+  // Load DB-seeded places on mount or city change
   useEffect(() => {
     async function fetchMapPlaces() {
       try {
-        const res = await fetch("/api/places");
+        const cityParam = location.city ? `?city=${encodeURIComponent(location.city)}&limit=200` : "?limit=200";
+        const res = await fetch(`/api/places${cityParam}`);
         if (res.ok) {
           const data = await res.json();
           const mapped: PlacePin[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; cuisine?: string; category?: { name?: string }; photos?: Array<{ url?: string }> }) => ({
@@ -333,8 +343,8 @@ export default function MapPage() {
             latitude: p.latitude ?? 20.5937,
             longitude: p.longitude ?? 78.9629,
             city: p.city,
-            averageRating: p.averageRating ?? p.rating ?? 5.0,
-            reviewCount: p.reviewCount ?? 1,
+            averageRating: p.averageRating ?? p.rating ?? 0.0,
+            reviewCount: p.reviewCount ?? 0,
             priceLevel: p.priceLevel ?? 2,
             category: p.category?.name || p.cuisine || "Restaurant",
             primaryPhotoUrl: p.photos?.[0]?.url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=60",
@@ -346,7 +356,7 @@ export default function MapPage() {
       }
     }
     fetchMapPlaces();
-  }, []);
+  }, [location.city]);
 
   // ── Google Places Nearby Search (real live data) ─────────────────────────
   const fetchGoogleNearbyRestaurants = async (lat: number, lng: number) => {

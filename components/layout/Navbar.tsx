@@ -16,12 +16,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { useLocationContext } from "@/context/LocationContext";
+import { MapPin } from "lucide-react";
+
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const pathname = usePathname();
   const { data: session } = useSession();
+  const { location, detectLocation } = useLocationContext();
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 12);
@@ -46,15 +50,28 @@ export default function Navbar() {
       )}
     >
       <div className="container flex h-16 items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="group flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 transition-colors group-hover:bg-red-700">
-            <Star className="h-4 w-4 fill-white text-white" />
-          </div>
-          <span className="text-xl font-bold tracking-tight text-zinc-900">
-            Yelp<span className="text-red-600">India</span>
-          </span>
-        </Link>
+        {/* Logo & GPS Location Pill */}
+        <div className="flex items-center gap-4">
+          <Link href="/" className="group flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-600 transition-colors group-hover:bg-red-700">
+              <Star className="h-4 w-4 fill-white text-white" />
+            </div>
+            <span className="text-xl font-bold tracking-tight text-zinc-900">
+              Yelp<span className="text-red-600">India</span>
+            </span>
+          </Link>
+
+          {/* Live GPS Location Pill */}
+          <button
+            type="button"
+            onClick={detectLocation}
+            className="hidden sm:flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-100 transition-colors"
+            title="Click to detect current GPS location"
+          >
+            <MapPin className="h-3.5 w-3.5 text-red-600" />
+            <span>{location.status === "locating" ? "Locating..." : location.city}</span>
+          </button>
+        </div>
 
         {/* Desktop Nav Links */}
         <nav className="hidden items-center gap-8 md:flex">

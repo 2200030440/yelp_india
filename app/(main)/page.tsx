@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn, formatRating, formatPriceLevel } from "@/lib/utils";
 import CitySelector from "@/components/common/CitySelector";
+import { useLocationContext } from "@/context/LocationContext";
 
 // ─── Restaurant Data ─────────────────────────────────────────────────────────
 
@@ -272,8 +273,15 @@ function StarRating({ rating }: { rating: number }) {
 
 function HeroSearch() {
   const router = useRouter();
+  const { location } = useLocationContext();
   const [query, setQuery] = useState("");
-  const [city, setCity] = useState("");
+  const [city, setCity] = useState(location.city || "");
+
+  useEffect(() => {
+    if (location.city && !city) {
+      setCity(location.city);
+    }
+  }, [location.city, city]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -424,12 +432,14 @@ function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) 
 }
 
 function FeaturedSection() {
+  const { location } = useLocationContext();
   const [places, setPlaces] = useState<typeof FEATURED_RESTAURANTS>(FEATURED_RESTAURANTS);
 
   useEffect(() => {
     async function fetchFeatured() {
       try {
-        const res = await fetch("/api/places");
+        const cityParam = location.city ? `?city=${encodeURIComponent(location.city)}&limit=6` : "?limit=6";
+        const res = await fetch(`/api/places${cityParam}`);
         if (res.ok) {
           const data = await res.json();
           const mapped = (data.places || []).map((p: { id?: string; name: string; slug: string; category?: { name?: string }; cuisine?: string; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
@@ -438,8 +448,8 @@ function FeaturedSection() {
             slug: p.slug,
             cuisine: p.category?.name || p.cuisine || "North Indian",
             city: p.city,
-            rating: p.averageRating ?? p.rating ?? 5.0,
-            reviewCount: p.reviewCount ?? 1,
+            rating: p.averageRating ?? p.rating ?? 0.0,
+            reviewCount: p.reviewCount ?? 0,
             priceLevel: p.priceLevel ?? 2,
             image: p.photos?.[0]?.url || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80",
             isOpen: true,
@@ -452,13 +462,32 @@ function FeaturedSection() {
       }
     }
     fetchFeatured();
-  }, []);
+  }, [location.city]);
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {places.map((place) => (
-        <RestaurantCard key={place.id} place={place} />
-      ))}
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-extrabold text-zinc-900">
+            Popular Restaurants in {location.city || "India"}
+          </h2>
+          <p className="text-xs text-zinc-500 font-medium mt-0.5">
+            📍 Showing top dining spots near your detected location
+          </p>
+        </div>
+        <Link
+          href={`/places?city=${encodeURIComponent(location.city || "all")}`}
+          className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
+        >
+          View All ({location.city}) →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {places.map((place) => (
+          <RestaurantCard key={place.id} place={place} />
+        ))}
+      </div>
     </div>
   );
 }

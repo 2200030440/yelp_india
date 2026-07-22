@@ -18,6 +18,7 @@ import StarRating from "@/components/common/StarRating";
 import { Button } from "@/components/ui/button";
 import { RESTAURANT_CATEGORIES, INDIAN_CITIES, SORT_OPTIONS } from "@/constants";
 import { cn } from "@/lib/utils";
+import { useLocationContext } from "@/context/LocationContext";
 
 // Load PlacesMap client-only (Leaflet requires browser)
 const PlacesMap = dynamic(
@@ -45,15 +46,23 @@ interface RestaurantItem {
 }
 
 function PlacesContent() {
+  const { location } = useLocationContext();
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category") ?? "all";
-  const initialCity = searchParams.get("city") ?? "all";
+  const paramCity = searchParams.get("city");
+  const initialCity = paramCity || location.city || "all";
   const initialSearch = searchParams.get("search") ?? "";
 
   const [restaurants, setRestaurants] = useState<RestaurantItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedCity, setSelectedCity] = useState(initialCity);
+
+  useEffect(() => {
+    if (!paramCity && location.city && selectedCity === "all") {
+      setSelectedCity(location.city);
+    }
+  }, [location.city, paramCity, selectedCity]);
   const [searchQuery, setSearchQuery] = useState(initialSearch);
   const [selectedPrice, setSelectedPrice] = useState<number | null>(null);
   const [minRating, setMinRating] = useState<number | null>(null);
