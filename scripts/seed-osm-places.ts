@@ -161,8 +161,6 @@ async function main() {
         else if (amenity === "pub" || amenity === "bar") catSlug = "pubs-bars";
 
         const categoryId = categoryMap.get(catSlug) ?? categoryMap.get("north-indian")!;
-        const rating = Number((4.0 + Math.random() * 0.9).toFixed(1));
-        const reviewCount = Math.floor(25 + Math.random() * 450);
         const priceLevel = Math.floor(1 + Math.random() * 3);
 
         const createdPlace = await prisma.place.create({
@@ -178,11 +176,11 @@ async function main() {
             priceLevel,
             phone: el.tags?.phone || null,
             website: el.tags?.website || null,
-            averageRating: rating,
-            reviewCount,
+            averageRating: 0.0,
+            reviewCount: 0,
             googlePlaceId: osmId,
             isVerified: true,
-            isFeatured: Math.random() > 0.7,
+            isFeatured: false,
             categoryId,
           },
         });

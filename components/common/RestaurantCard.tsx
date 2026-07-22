@@ -118,13 +118,21 @@ export default function RestaurantCard({
 
         {/* Rating */}
         <div className="mt-auto flex items-center gap-2 pt-2 border-t border-zinc-100">
-          <StarRating rating={rating} size="sm" />
-          <span className="text-xs font-bold text-zinc-800">
-            {formatRating(rating)}
-          </span>
-          <span className="text-xs text-zinc-400">
-            ({reviewCount.toLocaleString("en-IN")} reviews)
-          </span>
+          {reviewCount === 0 ? (
+            <span className="text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full">
+              No reviews yet — Be the first!
+            </span>
+          ) : (
+            <>
+              <StarRating rating={rating} size="sm" />
+              <span className="text-xs font-bold text-zinc-800">
+                {formatRating(rating)}
+              </span>
+              <span className="text-xs text-zinc-400">
+                ({reviewCount.toLocaleString("en-IN")} reviews)
+              </span>
+            </>
+          )}
         </div>
       </div>
     </div>

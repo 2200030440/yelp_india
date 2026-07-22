@@ -65,8 +65,15 @@ function PlacesContent() {
 
   useEffect(() => {
     async function loadPlaces() {
+      setLoading(true);
       try {
-        const res = await fetch("/api/places");
+        const params = new URLSearchParams();
+        if (selectedCity && selectedCity !== "all") params.set("city", selectedCity);
+        if (selectedCategory && selectedCategory !== "all") params.set("category", selectedCategory);
+        if (searchQuery) params.set("q", searchQuery);
+        params.set("limit", "200");
+
+        const res = await fetch(`/api/places?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
           const items: RestaurantItem[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean; address?: string; isVegOnly?: boolean }) => ({
@@ -96,7 +103,7 @@ function PlacesContent() {
       }
     }
     loadPlaces();
-  }, []);
+  }, [selectedCity, selectedCategory, searchQuery]);
 
   // Dynamically extract unique cities from available restaurants + default cities list
   const availableCities = useMemo(() => {

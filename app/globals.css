@@ -117,16 +117,19 @@ body {
   min-height: 100vh;
 }
 
-/* Focus visible — accessibility */
+/* Focus reset — prevent harsh browser focus outlines on inputs */
 :focus-visible {
-  outline: 2px solid rgb(var(--ring));
-  outline-offset: 2px;
-  border-radius: var(--radius-sm);
+  outline: none;
 }
 
-/* Remove focus ring for mouse users */
-:focus:not(:focus-visible) {
-  outline: none;
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
 }
 
 /* =====================================================================

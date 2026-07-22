@@ -297,7 +297,7 @@ function HeroSearch() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Biryani, Butter Chicken, Cafes, Rooftop…"
-            className="w-full text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
+            className="w-full text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 font-medium"
           />
         </div>
 
@@ -402,13 +402,21 @@ function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) 
 
         {/* Rating */}
         <div className="mt-auto flex items-center gap-2 pt-1">
-          <StarRating rating={place.rating} />
-          <span className="text-sm font-semibold text-zinc-800">
-            {formatRating(place.rating)}
-          </span>
-          <span className="text-sm text-zinc-400">
-            ({place.reviewCount.toLocaleString("en-IN")} reviews)
-          </span>
+          {place.reviewCount === 0 ? (
+            <span className="text-[11px] font-semibold text-zinc-500 bg-zinc-100 px-2.5 py-1 rounded-full">
+              No reviews yet — Be the first!
+            </span>
+          ) : (
+            <>
+              <StarRating rating={place.rating} />
+              <span className="text-sm font-semibold text-zinc-800">
+                {formatRating(place.rating)}
+              </span>
+              <span className="text-sm text-zinc-400">
+                ({place.reviewCount.toLocaleString("en-IN")} reviews)
+              </span>
+            </>
+          )}
         </div>
       </div>
     </Link>

@@ -206,7 +206,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
           {/* Gallery */}
           <div className="mt-8">
-            <PhotoGallery photos={galleryPhotos} placeName={place.name} maxVisible={5} />
+            <PhotoGallery photos={galleryPhotos} placeName={place.name} />
           </div>
         </div>
       </section>

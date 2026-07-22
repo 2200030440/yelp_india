@@ -35,7 +35,12 @@ function SearchContent() {
     async function fetchSearchPlaces() {
       setLoading(true);
       try {
-        const res = await fetch("/api/places");
+        const params = new URLSearchParams();
+        if (query) params.set("q", query);
+        if (city) params.set("city", city);
+        params.set("limit", "200");
+
+        const res = await fetch(`/api/places?${params.toString()}`);
         if (res.ok) {
           const data = await res.json();
           const mapped: SearchPlace[] = (data.places || []).map((p: { id?: string; name: string; slug: string; category?: { slug?: string; name?: string }; cuisine?: string; city: string; state?: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
@@ -62,7 +67,7 @@ function SearchContent() {
       }
     }
     fetchSearchPlaces();
-  }, []);
+  }, [query, city]);
 
   const results = useMemo(() => {
     return places.filter((r) => {

@@ -1,11 +1,7 @@
 "use client";
 
 // components/common/PhotoGallery.tsx
-// Responsive photo gallery with:
-//  - Grid layout (masonry-style)
-//  - Full-screen lightbox modal with keyboard nav (←/→/Esc)
-//  - Download button
-//  - Caption support
+// Sleek, Premium Single Banner Hero & Lightbox Gallery
 
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
@@ -14,12 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  ZoomIn,
   Images,
+  Maximize2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// ── Types ──────────────────────────────────────────────────────────────────
 
 export interface GalleryPhoto {
   url: string;
@@ -31,17 +25,12 @@ export interface GalleryPhoto {
 interface PhotoGalleryProps {
   photos: GalleryPhoto[];
   placeName?: string;
-  /** Show max N photos in the grid, rest hidden behind a +N overlay */
-  maxVisible?: number;
   className?: string;
 }
-
-// ── Component ─────────────────────────────────────────────────────────────
 
 export default function PhotoGallery({
   photos,
   placeName = "Place",
-  maxVisible = 5,
   className,
 }: PhotoGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -71,7 +60,6 @@ export default function PhotoGallery({
       if (e.key === "ArrowRight") navigate("next");
     };
     window.addEventListener("keydown", onKeyDown);
-    // Prevent body scroll while lightbox is open
     document.body.style.overflow = "hidden";
     return () => {
       window.removeEventListener("keydown", onKeyDown);
@@ -83,119 +71,79 @@ export default function PhotoGallery({
     return (
       <div
         className={cn(
-          "flex h-48 flex-col items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400",
+          "flex h-64 flex-col items-center justify-center rounded-3xl bg-zinc-900 text-zinc-500 border border-zinc-800",
           className,
         )}
       >
-        <Images className="h-10 w-10 mb-2" />
-        <p className="text-sm">No photos yet</p>
+        <Images className="h-10 w-10 mb-2 text-zinc-600" />
+        <p className="text-sm font-medium">No photos available</p>
       </div>
     );
   }
 
-  const visiblePhotos = photos.slice(0, maxVisible);
-  const remaining = photos.length - maxVisible;
+  const primaryPhoto = photos.find((p) => p.isPrimary) || photos[0];
 
   return (
     <>
-      {/* ── Gallery Grid ──────────────────────────────────────────────── */}
+      {/* ── Single Clean Hero Banner ────────────────────────────────────────── */}
       <div
         className={cn(
-          "grid h-72 gap-2 overflow-hidden rounded-2xl",
-          photos.length === 1
-            ? "grid-cols-1"
-            : photos.length === 2
-              ? "grid-cols-2"
-              : photos.length === 3
-                ? "grid-cols-3"
-                : "grid-cols-4",
+          "group relative h-80 sm:h-96 w-full cursor-pointer overflow-hidden rounded-3xl bg-zinc-900 border border-white/10 shadow-2xl transition-all duration-300 hover:border-white/20",
           className,
         )}
+        onClick={() => setLightboxIndex(0)}
+        role="button"
+        tabIndex={0}
+        aria-label={`View photo of ${placeName}`}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setLightboxIndex(0)}
       >
-        {visiblePhotos.map((photo, idx) => {
-          const isFirst = idx === 0;
-          const isLast = idx === visiblePhotos.length - 1;
-          const hasMore = isLast && remaining > 0;
+        <Image
+          src={primaryPhoto.url}
+          alt={primaryPhoto.caption ?? `${placeName} main photo`}
+          fill
+          className="object-cover transition-transform duration-700 group-hover:scale-105"
+          sizes="100vw"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 
-          return (
-            <div
-              key={photo.url + idx}
-              className={cn(
-                "group relative cursor-pointer overflow-hidden bg-zinc-800",
-                isFirst && photos.length > 1 && "col-span-2 row-span-2",
-              )}
-              onClick={() => setLightboxIndex(idx)}
-              role="button"
-              tabIndex={0}
-              aria-label={`View photo ${idx + 1} of ${photos.length}`}
-              onKeyDown={(e) =>
-                (e.key === "Enter" || e.key === " ") && setLightboxIndex(idx)
-              }
-            >
-              <Image
-                src={photo.url}
-                alt={photo.caption ?? `${placeName} photo ${idx + 1}`}
-                fill
-                className="object-cover transition-transform duration-500 group-hover:scale-105"
-                sizes="(max-width: 768px) 50vw, 25vw"
-                priority={isFirst}
-              />
-
-              {/* Hover Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/30">
-                <ZoomIn className="h-6 w-6 text-white opacity-0 transition-opacity group-hover:opacity-100" />
-              </div>
-
-              {/* "More" overlay on last visible */}
-              {hasMore && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
-                  <span className="text-2xl font-extrabold text-white">
-                    +{remaining}
-                  </span>
-                  <span className="text-xs text-white/80 mt-1">more photos</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {/* View Fullscreen Pill Button */}
+        <div className="absolute bottom-4 right-4 flex items-center gap-2 rounded-xl bg-black/60 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-md transition-all group-hover:bg-black/80 group-hover:scale-105">
+          <Maximize2 className="h-4 w-4 text-red-500" />
+          <span>View HD Photo {photos.length > 1 && `(${photos.length})`}</span>
+        </div>
       </div>
 
-      {/* ── Lightbox ──────────────────────────────────────────────────── */}
+      {/* ── Lightbox Modal ─────────────────────────────────────────────────── */}
       {isOpen && current && (
         <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md animate-in fade-in duration-200"
           onClick={closeLightbox}
         >
-          {/* Image container */}
           <div
             className="relative flex max-h-[90vh] max-w-5xl flex-col items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Top bar */}
+            {/* Top Bar */}
             <div className="mb-3 flex w-full items-center justify-between">
-              <span className="text-sm text-white/60">
-                {lightboxIndex! + 1} / {photos.length}
-                {placeName && (
-                  <span className="ml-2 text-white/40">· {placeName}</span>
-                )}
+              <span className="text-xs font-bold uppercase tracking-wider text-white/70">
+                {lightboxIndex! + 1} / {photos.length} · {placeName}
               </span>
               <div className="flex items-center gap-2">
-                {/* Download */}
                 <a
                   href={current.url}
                   download
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors"
                   aria-label="Download photo"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <Download className="h-4 w-4" />
                 </a>
-                {/* Close */}
                 <button
                   onClick={closeLightbox}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10 text-white hover:bg-red-600 transition-colors"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-white hover:bg-red-600 transition-colors"
                   aria-label="Close lightbox"
                 >
                   <X className="h-4 w-4" />
@@ -203,27 +151,27 @@ export default function PhotoGallery({
               </div>
             </div>
 
-            {/* Main photo */}
-            <div className="relative max-h-[75vh] w-full overflow-hidden rounded-xl">
+            {/* Main Photo Display */}
+            <div className="relative max-h-[75vh] w-full overflow-hidden rounded-2xl border border-zinc-800 shadow-2xl bg-black flex items-center justify-center">
               <Image
                 key={current.url}
                 src={current.url}
                 alt={current.caption ?? `${placeName} photo`}
                 width={1200}
                 height={800}
-                className="max-h-[75vh] w-full object-contain"
+                className="max-h-[75vh] w-auto max-w-full object-contain"
                 unoptimized
               />
             </div>
 
             {/* Caption */}
             {current.caption && (
-              <p className="mt-3 text-sm text-white/70 text-center max-w-lg">
+              <p className="mt-3 text-xs text-white/80 text-center font-medium">
                 {current.caption}
               </p>
             )}
 
-            {/* Thumbnail strip */}
+            {/* Thumbnail Strip */}
             {photos.length > 1 && (
               <div className="mt-4 flex gap-2 overflow-x-auto pb-1 max-w-full">
                 {photos.map((photo, idx) => (
@@ -231,12 +179,11 @@ export default function PhotoGallery({
                     key={photo.url + idx}
                     onClick={() => setLightboxIndex(idx)}
                     className={cn(
-                      "relative h-12 w-12 shrink-0 overflow-hidden rounded-lg border-2 transition-all",
+                      "relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border-2 transition-all",
                       lightboxIndex === idx
-                        ? "border-red-500 opacity-100"
-                        : "border-transparent opacity-50 hover:opacity-80",
+                        ? "border-red-500 scale-105"
+                        : "border-transparent opacity-50 hover:opacity-100",
                     )}
-                    aria-label={`Jump to photo ${idx + 1}`}
                   >
                     <Image
                       src={photo.url}
@@ -252,7 +199,7 @@ export default function PhotoGallery({
             )}
           </div>
 
-          {/* Prev / Next navigation */}
+          {/* Navigation Controls */}
           {photos.length > 1 && (
             <>
               <button
@@ -260,20 +207,18 @@ export default function PhotoGallery({
                   e.stopPropagation();
                   navigate("prev");
                 }}
-                className="absolute left-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-                aria-label="Previous photo"
+                className="absolute left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-6 w-6" />
               </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate("next");
                 }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-                aria-label="Next photo"
+                className="absolute right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-all backdrop-blur-sm"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-6 w-6" />
               </button>
             </>
           )}

@@ -19,7 +19,9 @@
     "db:seed": "npx tsx prisma/seed/index.ts",
     "db:reset": "prisma migrate reset",
     "seed:cities": "npx tsx scripts/seed-google-places.ts",
-    "seed:osm": "npx tsx scripts/seed-osm-places.ts"
+    "seed:osm": "npx tsx scripts/seed-osm-places.ts",
+    "seed:hyderabad": "npx tsx scripts/seed-city-hyderabad.ts",
+    "seed:city": "npx tsx scripts/seed-city.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed/index.ts"

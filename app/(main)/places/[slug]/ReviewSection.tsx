@@ -265,23 +265,22 @@ export default function ReviewSection({
 
           <div>
             <label className="text-xs font-semibold text-zinc-700 uppercase tracking-wide">
-              Your Experience
+              Your Detailed Experience (1–3 Paragraphs)
             </label>
             <textarea
-              rows={4}
+              rows={6}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Share details about the food quality, service, ambiance..."
-              className="mt-1 w-full rounded-xl border border-zinc-200 p-3 text-sm outline-none focus:ring-2 focus:ring-red-500 bg-white resize-none"
+              placeholder="Tell other foodies about the taste, specialty dishes, service speed, seating ambiance, and value for money..."
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 p-4 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-zinc-400 bg-white min-h-[140px] leading-relaxed font-medium resize-y"
+              maxLength={2000}
             />
-            <p
-              className={cn(
-                "text-xs mt-1",
-                content.length < 10 ? "text-zinc-400" : "text-emerald-600"
-              )}
-            >
-              {content.length}/10 minimum characters
-            </p>
+            <div className="flex items-center justify-between text-xs mt-1.5 text-zinc-500 font-medium">
+              <span>Detailed reviews help diners choose the best spots</span>
+              <span className={cn(content.length >= 10 ? "text-emerald-600 font-bold" : "text-zinc-400")}>
+                {content.length.toLocaleString("en-IN")} / 2,000 chars {content.length < 10 && "(min 10)"}
+              </span>
+            </div>
           </div>
 
           {/* Diners Photo Upload (Camera or Gallery) */}
