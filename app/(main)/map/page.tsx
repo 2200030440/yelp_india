@@ -21,6 +21,7 @@ import {
 import { cn, formatPriceLevel, getDistanceKm, formatDistance } from "@/lib/utils";
 import { type PlacePin } from "@/components/common/PlacesMap";
 import { useLocationContext } from "@/context/LocationContext";
+import CitySelector from "@/components/common/CitySelector";
 
 // Load PlacesMap client-only (no SSR — Leaflet uses window)
 const PlacesMap = dynamic(
@@ -314,6 +315,7 @@ export default function MapPage() {
   const [places, setPlaces] = useState<PlacePin[]>(INITIAL_PLACES);
   const [activePlaceId, setActivePlaceId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCity, setSelectedCity] = useState<string>(location.city || "");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userLocation, setUserLocation] = useState<{
     latitude: number;
@@ -321,19 +323,25 @@ export default function MapPage() {
   } | null>(null);
   const [nearbyStatus, setNearbyStatus] = useState<"idle" | "locating" | "fetching" | "done" | "error">("idle");
 
-  // Sync LocationContext with userLocation state & fetch places for detected city
+  // Sync selected city with location context if not set manually
+  useEffect(() => {
+    if (location.city && !selectedCity) {
+      setSelectedCity(location.city);
+    }
+  }, [location.city, selectedCity]);
+
+  // Sync LocationContext with userLocation state
   useEffect(() => {
     if (location.latitude && location.longitude) {
       setUserLocation({ latitude: location.latitude, longitude: location.longitude });
     }
   }, [location.latitude, location.longitude]);
 
-  // Load DB-seeded places on mount or city change
+  // Load ALL DB-seeded places across India
   useEffect(() => {
     async function fetchMapPlaces() {
       try {
-        const cityParam = location.city ? `?city=${encodeURIComponent(location.city)}&limit=200` : "?limit=200";
-        const res = await fetch(`/api/places${cityParam}`);
+        const res = await fetch("/api/places?limit=1000");
         if (res.ok) {
           const data = await res.json();
           const mapped: PlacePin[] = (data.places || []).map((p: { id?: string; name: string; slug: string; latitude?: number; longitude?: number; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; cuisine?: string; category?: { name?: string }; photos?: Array<{ url?: string }> }) => ({
@@ -356,7 +364,7 @@ export default function MapPage() {
       }
     }
     fetchMapPlaces();
-  }, [location.city]);
+  }, []);
 
   // ── Google Places Nearby Search (real live data) ─────────────────────────
   const fetchGoogleNearbyRestaurants = async (lat: number, lng: number) => {
@@ -444,25 +452,23 @@ export default function MapPage() {
           p.category?.toLowerCase().includes(q),
       );
     }
-    if (userLocation) {
-      return [...result].sort((a, b) => {
-        const dA = getDistanceKm(
-          userLocation.latitude,
-          userLocation.longitude,
-          a.latitude,
-          a.longitude,
-        );
-        const dB = getDistanceKm(
-          userLocation.latitude,
-          userLocation.longitude,
-          b.latitude,
-          b.longitude,
-        );
+
+    const targetCity = (selectedCity || location.city || "").toLowerCase().trim();
+
+    return [...result].sort((a, b) => {
+      // 1. If GPS location available, sort by distance in km
+      if (userLocation) {
+        const dA = getDistanceKm(userLocation.latitude, userLocation.longitude, a.latitude, a.longitude);
+        const dB = getDistanceKm(userLocation.latitude, userLocation.longitude, b.latitude, b.longitude);
         return dA - dB;
-      });
-    }
-    return result;
-  }, [places, searchQuery, userLocation]);
+      }
+      // 2. Prioritize target city places to appear AT THE TOP OF THE LIST
+      const aMatch = targetCity && a.city.toLowerCase().includes(targetCity) ? 1 : 0;
+      const bMatch = targetCity && b.city.toLowerCase().includes(targetCity) ? 1 : 0;
+      if (aMatch !== bMatch) return bMatch - aMatch;
+      return 0;
+    });
+  }, [places, searchQuery, userLocation, location.city, selectedCity]);
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
@@ -490,7 +496,7 @@ export default function MapPage() {
           </button>
         </div>
 
-        {/* Search */}
+        {/* Search & City Filter */}
         <div className="border-b border-zinc-100 p-3 flex flex-col gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
@@ -498,7 +504,7 @@ export default function MapPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search places, cities, cuisines…"
+              placeholder="Search places, cuisines…"
               className="w-full rounded-xl border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-red-400 focus:ring-2 focus:ring-red-200"
             />
             {searchQuery && (
@@ -510,6 +516,14 @@ export default function MapPage() {
               </button>
             )}
           </div>
+
+          <CitySelector
+            value={selectedCity}
+            onChange={setSelectedCity}
+            placeholder="Focus City on Map..."
+            className="w-full"
+          />
+
           <button
             onClick={handleLocateUser}
             disabled={nearbyStatus === "locating" || nearbyStatus === "fetching"}
@@ -521,6 +535,7 @@ export default function MapPage() {
             {nearbyStatus === "error" && "⚠️ Failed — try again"}
             {nearbyStatus === "idle" && "📍 Find Restaurants Near Me (Google)"}
           </button>
+
           {nearbyStatus === "done" && (
             <p className="text-center text-[10px] text-emerald-600 font-semibold">
               Showing live Google Places near you. Tap any to review!
@@ -592,9 +607,10 @@ export default function MapPage() {
         )}
 
         <PlacesMap
-          places={filteredPlaces}
+          places={places}
           activePlaceId={activePlaceId}
           userLocation={userLocation}
+          focusedCity={selectedCity || location.city}
           onLocateUser={handleLocateUser}
           height="h-full"
           className="h-full rounded-none border-0"

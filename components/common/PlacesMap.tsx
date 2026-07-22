@@ -1,11 +1,13 @@
 "use client";
 
 // components/common/PlacesMap.tsx
-// Multi-place interactive Leaflet map with cluster markers & automatic bounds fitting
+// Multi-place interactive Leaflet map rendering ALL pins across India simultaneously.
+// Supports focusing camera on user location / selected city while preserving all pins across India.
 
 import { useEffect, useRef } from "react";
 import { MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { CITY_COORDINATES } from "@/constants";
 
 const LEAFLET_CSS = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
 const CLUSTER_CSS =
@@ -31,6 +33,7 @@ interface PlacesMapProps {
   places: PlacePin[];
   activePlaceId?: string | null;
   userLocation?: { latitude: number; longitude: number } | null;
+  focusedCity?: string;
   height?: string;
   className?: string;
   onPlaceSelect?: (id: string) => void;
@@ -41,6 +44,7 @@ export default function PlacesMap({
   places,
   activePlaceId,
   userLocation,
+  focusedCity,
   height = "h-[600px]",
   className,
   onPlaceSelect,
@@ -91,13 +95,11 @@ export default function PlacesMap({
 
       const initialCenter: [number, number] = userLocation
         ? [userLocation.latitude, userLocation.longitude]
-        : places.length > 0 && places[0].latitude && places[0].longitude
-        ? [places[0].latitude, places[0].longitude]
         : [20.5937, 78.9629];
 
       mapInstance = L.map(mapContainerRef.current, {
         center: initialCenter,
-        zoom: userLocation ? 13 : places.length > 0 ? 12 : 5,
+        zoom: userLocation ? 12 : 5,
         minZoom: 4,
         maxZoom: 18,
         zoomControl: true,
@@ -112,7 +114,7 @@ export default function PlacesMap({
       // Create Marker Cluster Group
       const clusterGroup = (L as any).markerClusterGroup({
         chunkedLoading: true,
-        maxClusterRadius: 50,
+        maxClusterRadius: 45,
       });
 
       mapInstance.addLayer(clusterGroup);
@@ -133,7 +135,7 @@ export default function PlacesMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Function to render / update markers whenever `places` changes
+  // Function to render ALL markers across India dynamically
   const renderMarkers = () => {
     const map = mapRef.current;
     const cluster = clusterGroupRef.current;
@@ -231,10 +233,39 @@ export default function PlacesMap({
       markersRef.current.set(place.id, marker);
     });
 
-    // Auto-fit map view bounds to include all active markers
-    if (validPlaces.length > 0 && !userLocation) {
-      const bounds = L.latLngBounds(validPlaces.map((p) => [p.latitude, p.longitude]));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    focusMapCamera();
+  };
+
+  // Focus map camera on focusedCity or userLocation or all places
+  const focusMapCamera = () => {
+    const map = mapRef.current;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const L = (window as any).L;
+    if (!map || !L) return;
+
+    if (userLocation) {
+      map.setView([userLocation.latitude, userLocation.longitude], 13, { animate: true });
+      return;
+    }
+
+    if (focusedCity) {
+      const cityLower = focusedCity.toLowerCase().trim();
+      const cityPlaces = places.filter((p) => p.city.toLowerCase().includes(cityLower));
+      if (cityPlaces.length > 0) {
+        const bounds = L.latLngBounds(cityPlaces.map((p) => [p.latitude, p.longitude]));
+        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+        return;
+      }
+      const coordLookup = CITY_COORDINATES[cityLower];
+      if (coordLookup) {
+        map.setView([coordLookup.lat, coordLookup.lng], 12, { animate: true });
+        return;
+      }
+    }
+
+    if (places.length > 0) {
+      const bounds = L.latLngBounds(places.map((p) => [p.latitude, p.longitude]));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     }
   };
 
@@ -243,6 +274,12 @@ export default function PlacesMap({
     renderMarkers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [places, activePlaceId]);
+
+  // Focus camera when focusedCity changes
+  useEffect(() => {
+    focusMapCamera();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedCity]);
 
   // Update user location pin dynamically
   useEffect(() => {
@@ -301,7 +338,7 @@ export default function PlacesMap({
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-red-500" />
           <span className="text-xs font-semibold text-white">
-            {validPlacesCount} restaurant pin{validPlacesCount !== 1 ? "s" : ""} on map
+            {validPlacesCount} total restaurant pins across India
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -315,7 +352,7 @@ export default function PlacesMap({
             </button>
           )}
           <span className="text-xs text-zinc-400 hidden sm:inline">
-            OpenStreetMap Interactive
+            Zoom out to view all India pins
           </span>
         </div>
       </div>
