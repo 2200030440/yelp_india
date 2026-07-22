@@ -54,7 +54,8 @@ export async function GET(request: NextRequest) {
           include: {
             category: { select: { name: true, slug: true } },
             photos:   {
-              where:   { isPrimary: true, deletedAt: null },
+              where:   { deletedAt: null },
+              orderBy: { isPrimary: "desc" },
               take:    1,
               select:  { url: true },
             },

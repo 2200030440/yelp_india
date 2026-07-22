@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { type Review, reviewsApi } from "@/lib/api";
+import PhotoPicker from "@/components/common/PhotoPicker";
 import {
   updateReviewAction,
   deleteReviewAction,
@@ -48,6 +49,7 @@ export default function ReviewSection({
   const [showForm, setShowForm] = useState(false);
   const [rating, setRating] = useState(5);
   const [content, setContent] = useState("");
+  const [photoUrl, setPhotoUrl] = useState("");
   const [hoverRating, setHoverRating] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -281,6 +283,13 @@ export default function ReviewSection({
               {content.length}/10 minimum characters
             </p>
           </div>
+
+          {/* Diners Photo Upload (Camera or Gallery) */}
+          <PhotoPicker
+            label="Add Food / Ambiance Photo (Optional)"
+            value={photoUrl}
+            onChange={setPhotoUrl}
+          />
 
           <div className="flex justify-end gap-2">
             <Button

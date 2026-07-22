@@ -18,7 +18,8 @@
     "db:studio": "prisma studio",
     "db:seed": "npx tsx prisma/seed/index.ts",
     "db:reset": "prisma migrate reset",
-    "seed:cities": "npx tsx scripts/seed-google-places.ts"
+    "seed:cities": "npx tsx scripts/seed-google-places.ts",
+    "seed:osm": "npx tsx scripts/seed-osm-places.ts"
   },
   "prisma": {
     "seed": "npx tsx prisma/seed/index.ts"

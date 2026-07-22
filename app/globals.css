@@ -160,3 +160,14 @@ body {
   border-radius: var(--radius);
   animation: skeleton-pulse 1.5s ease-in-out infinite;
 }
+
+/* Ensure form controls (inputs, selects, textareas) have high contrast dark text */
+input, select, textarea {
+  color: #18181b !important;
+  background-color: #ffffff;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #a1a1aa !important;
+}
+

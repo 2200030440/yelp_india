@@ -11,11 +11,11 @@ import {
   X,
   Globe,
   Phone,
-  Image as ImageIcon,
   CheckCircle2,
 } from "lucide-react";
 import { formatPriceLevel } from "@/lib/utils";
 import { INDIAN_CITIES, INDIAN_STATES, CITY_COORDINATES } from "@/constants";
+import PhotoPicker from "@/components/common/PhotoPicker";
 
 interface Restaurant {
   id: string;
@@ -296,7 +296,7 @@ export default function RestaurantManagementPage() {
                   value={newRest.name}
                   onChange={(e) => setNewRest({ ...newRest, name: e.target.value })}
                   placeholder="e.g. Peshawri Restaurant / Barbeque Nation"
-                  className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 font-medium"
+                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-red-500 focus:ring-2 focus:ring-red-500/20 font-medium"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export default function RestaurantManagementPage() {
                   <select
                     value={newRest.cuisine}
                     onChange={(e) => setNewRest({ ...newRest, cuisine: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none font-medium"
                   >
                     <option value="North Indian">North Indian</option>
                     <option value="South Indian">South Indian</option>
@@ -330,7 +330,7 @@ export default function RestaurantManagementPage() {
                   <select
                     value={newRest.priceLevel}
                     onChange={(e) => setNewRest({ ...newRest, priceLevel: Number(e.target.value) })}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none font-medium"
                   >
                     <option value={1}>₹ (Budget - under ₹300)</option>
                     <option value={2}>₹₹ (Moderate - ₹300–₹700)</option>
@@ -353,7 +353,7 @@ export default function RestaurantManagementPage() {
                     value={newRest.city}
                     onChange={(e) => handleCityChange(e.target.value)}
                     placeholder="e.g. Jaipur, Kochi, Pune, Surat..."
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:border-red-500 font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none focus:border-red-500 font-medium"
                   />
                   <datalist id="indian-cities-list">
                     {INDIAN_CITIES.map((c) => (
@@ -369,7 +369,7 @@ export default function RestaurantManagementPage() {
                   <select
                     value={newRest.state}
                     onChange={(e) => setNewRest({ ...newRest, state: e.target.value })}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 outline-none font-medium"
                   >
                     {INDIAN_STATES.map((s) => (
                       <option key={s} value={s}>
@@ -391,7 +391,7 @@ export default function RestaurantManagementPage() {
                     value={newRest.address}
                     onChange={(e) => setNewRest({ ...newRest, address: e.target.value })}
                     placeholder="e.g. 12 MI Road, Near Raj Mandir Cinema"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                   />
                 </div>
 
@@ -404,7 +404,7 @@ export default function RestaurantManagementPage() {
                     value={newRest.postalCode}
                     onChange={(e) => setNewRest({ ...newRest, postalCode: e.target.value })}
                     placeholder="e.g. 302001"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                   />
                 </div>
               </div>
@@ -420,7 +420,7 @@ export default function RestaurantManagementPage() {
                     value={newRest.phone}
                     onChange={(e) => setNewRest({ ...newRest, phone: e.target.value })}
                     placeholder="+91 98765 43210"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                   />
                 </div>
 
@@ -433,24 +433,17 @@ export default function RestaurantManagementPage() {
                     value={newRest.website}
                     onChange={(e) => setNewRest({ ...newRest, website: e.target.value })}
                     placeholder="https://example.com"
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                   />
                 </div>
               </div>
 
-              {/* Photo URL */}
-              <div>
-                <label className="text-xs font-bold text-zinc-700 uppercase tracking-wider flex items-center gap-1">
-                  <ImageIcon className="h-3 w-3" /> Photo URL
-                </label>
-                <input
-                  type="url"
-                  value={newRest.photoUrl}
-                  onChange={(e) => setNewRest({ ...newRest, photoUrl: e.target.value })}
-                  placeholder="https://images.unsplash.com/..."
-                  className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
-                />
-              </div>
+              {/* Photo Upload (Camera / Gallery / URL) */}
+              <PhotoPicker
+                label="Restaurant Photo"
+                value={newRest.photoUrl}
+                onChange={(url) => setNewRest({ ...newRest, photoUrl: url })}
+              />
 
               {/* Description */}
               <div>
@@ -462,7 +455,7 @@ export default function RestaurantManagementPage() {
                   value={newRest.description}
                   onChange={(e) => setNewRest({ ...newRest, description: e.target.value })}
                   placeholder="Short overview of specialty dishes, ambiance, and history..."
-                  className="mt-1.5 w-full rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none font-medium"
+                  className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                 />
               </div>
 

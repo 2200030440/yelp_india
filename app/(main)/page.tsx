@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import {
   Search,
   MapPin,
@@ -208,6 +209,45 @@ const HOW_IT_WORKS = [
   },
 ];
 
+const TOP_CITIES = [
+  {
+    name: "Mumbai",
+    tagline: "Vada Pav & Coastal Seafood",
+    count: "4,200+ Spots",
+    image: "https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=600&q=80",
+  },
+  {
+    name: "New Delhi",
+    tagline: "Butter Chicken & Street Food",
+    count: "5,100+ Spots",
+    image: "https://images.unsplash.com/photo-1587474260584-136574528ed5?w=600&q=80",
+  },
+  {
+    name: "Bengaluru",
+    tagline: "Craft Beer & South Indian Dosa",
+    count: "3,800+ Spots",
+    image: "https://images.unsplash.com/photo-1596176530529-78163a4f7af2?w=600&q=80",
+  },
+  {
+    name: "Hyderabad",
+    tagline: "World Famous Biryani & Irani Chai",
+    count: "3,400+ Spots",
+    image: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600&q=80",
+  },
+  {
+    name: "Chennai",
+    tagline: "Filter Coffee & Authentic Tiffin",
+    count: "2,900+ Spots",
+    image: "https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=600&q=80",
+  },
+  {
+    name: "Kolkata",
+    tagline: "Kathi Rolls & Bengali Sweets",
+    count: "3,100+ Spots",
+    image: "https://images.unsplash.com/photo-1558431382-27e303142255?w=600&q=80",
+  },
+];
+
 // ─── Star Rating Component ────────────────────────────────────────────────────
 
 function StarRating({ rating }: { rating: number }) {
@@ -231,12 +271,24 @@ function StarRating({ rating }: { rating: number }) {
 // ─── Hero Search Bar ──────────────────────────────────────────────────────────
 
 function HeroSearch() {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (query.trim()) params.set("q", query.trim());
+    if (city.trim()) params.set("city", city.trim());
+    router.push(`/search?${params.toString()}`);
+  };
+
   return (
     <div className="mx-auto w-full max-w-2xl">
-      <div className="flex flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row">
+      <form
+        onSubmit={handleSearch}
+        className="flex flex-col gap-2 rounded-2xl bg-white p-2 shadow-2xl sm:flex-row"
+      >
         {/* Query input */}
         <div className="flex flex-1 items-center gap-3 rounded-xl px-4 py-3 ring-1 ring-zinc-200 focus-within:ring-2 focus-within:ring-red-500">
           <Search className="h-4 w-4 shrink-0 text-zinc-400" />
@@ -268,11 +320,14 @@ function HeroSearch() {
         </div>
 
         {/* Search button */}
-        <button className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700">
+        <button
+          type="submit"
+          className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+        >
           <Search className="h-4 w-4" />
           <span>Find Food</span>
         </button>
-      </div>
+      </form>
 
       {/* Quick tags */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -510,6 +565,56 @@ export default function HomePage() {
                     {cat.name}
                   </p>
                   <p className="mt-0.5 text-xs text-zinc-400">{cat.count}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Top Food Cities ──────────────────────────────────────────────── */}
+      <section className="border-b border-zinc-100 bg-white py-16">
+        <div className="container">
+          <div className="mb-10 flex items-end justify-between">
+            <div>
+              <p className="mb-1 text-sm font-medium uppercase tracking-widest text-red-600">
+                Explore Destinations
+              </p>
+              <h2 className="text-3xl font-bold text-zinc-900">
+                Top Food Cities in India
+              </h2>
+            </div>
+            <Link
+              href="/search"
+              className="hidden items-center gap-1 text-sm font-medium text-zinc-600 hover:text-red-600 md:flex"
+            >
+              All 500+ Cities <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {TOP_CITIES.map((c) => (
+              <Link
+                key={c.name}
+                href={`/search?city=${encodeURIComponent(c.name)}`}
+                className="group relative flex h-48 overflow-hidden rounded-2xl border border-zinc-200 bg-zinc-900 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+              >
+                <Image
+                  src={c.image}
+                  alt={c.name}
+                  fill
+                  className="object-cover opacity-80 transition-transform duration-500 group-hover:scale-105 group-hover:opacity-75"
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                <div className="relative mt-auto flex w-full items-end justify-between p-5 text-white">
+                  <div>
+                    <h3 className="text-xl font-bold">{c.name}</h3>
+                    <p className="text-xs text-zinc-300">{c.tagline}</p>
+                  </div>
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium backdrop-blur-md">
+                    {c.count}
+                  </span>
                 </div>
               </Link>
             ))}

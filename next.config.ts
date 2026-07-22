@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  turbopack: {
+    root: process.cwd(),
+  },
   // Image optimization: allow domains we'll use
   images: {
     remotePatterns: [
