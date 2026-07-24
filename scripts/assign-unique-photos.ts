@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 // 50 High-Definition Unique Restaurant Photos from Unsplash
 const DISTINCT_HD_PHOTOS = [
-  "https://images.unsplash.com/photo-1563379091339-03246963d7d3?w=1200&q=80", // Dum Biryani
+  "https://images.unsplash.com/photo-1633945274405-b6c8069047b0?w=1200&q=80", // Dum Biryani
   "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1200&q=80", // Royal Kebabs
   "https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?w=1200&q=80", // Irani Chai & Bakery
   "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=1200&q=80", // Rich Curry & Naan
@@ -26,7 +26,7 @@ const DISTINCT_HD_PHOTOS = [
   "https://images.unsplash.com/photo-1567337710282-00832b415979?w=1200&q=80", // Gourmet Fine Veg
   "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1200&q=80", // French Macarons & Pastry
   "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=1200&q=80", // Ghee Dosa & Idli Bowl
-  "https://images.unsplash.com/photo-1626777553634-517855018a38?w=1200&q=80", // Mutton Haleem Pot
+  "https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=1200&q=80", // Mutton Haleem Pot
   "https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=1200&q=80", // Modern Bistro Dining
   "https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=1200&q=80", // Regional Chicken Curry
   "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80", // Parsi Cafe Interior
