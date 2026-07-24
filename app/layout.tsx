@@ -74,9 +74,9 @@ export default function RootLayout({
       <body className="min-h-full bg-background font-sans antialiased">
         <LocationProvider>
           <AuthProvider>
-            <FavoritesProvider>
-              <ToastProvider>{children}</ToastProvider>
-            </FavoritesProvider>
+            <ToastProvider>
+              <FavoritesProvider>{children}</FavoritesProvider>
+            </ToastProvider>
           </AuthProvider>
         </LocationProvider>
       </body>
