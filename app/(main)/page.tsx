@@ -203,12 +203,20 @@ function HeroSearch() {
   const { location } = useLocationContext();
   const [query, setQuery] = useState("");
   const [city, setCity] = useState(location.city || "");
+  const [hasCleared, setHasCleared] = useState(false);
 
   useEffect(() => {
-    if (location.city && !city) {
+    if (location.city && !city && !hasCleared) {
       setCity(location.city);
     }
-  }, [location.city, city]);
+  }, [location.city, city, hasCleared]);
+
+  const handleCityChange = (newCity: string) => {
+    setCity(newCity);
+    if (!newCity) {
+      setHasCleared(true);
+    }
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -239,7 +247,7 @@ function HeroSearch() {
         {/* Custom Premium City Selector */}
         <CitySelector
           value={city}
-          onChange={setCity}
+          onChange={handleCityChange}
           placeholder="Location / City..."
         />
 
@@ -622,11 +630,8 @@ export default function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {HOW_IT_WORKS.map((step, i) => (
+            {HOW_IT_WORKS.map((step) => (
               <div key={step.step} className="relative flex flex-col items-center text-center">
-                {i < HOW_IT_WORKS.length - 1 && (
-                  <div className="absolute right-0 top-10 hidden w-1/2 border-t-2 border-dashed border-zinc-300 md:block" />
-                )}
                 <div
                   className={cn(
                     "mb-4 flex h-20 w-20 items-center justify-center rounded-2xl",

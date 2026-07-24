@@ -1,7 +1,7 @@
 // app/api/favorites/route.ts
 // GET    /api/favorites — current user's saved places
-// POST   /api/favorites — save a place
-// DELETE /api/favorites?placeId=xxx — unsave a place
+// POST   /api/favorites — save a place (accepts ID or slug)
+// DELETE /api/favorites?placeId=xxx — unsave a place (accepts ID or slug)
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -22,9 +22,10 @@ export async function GET() {
           include: {
             category: { select: { name: true, slug: true } },
             photos:   {
-              where:  { isPrimary: true, deletedAt: null },
-              take:   1,
-              select: { url: true },
+              where:   { deletedAt: null },
+              orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }],
+              take:    1,
+              select:  { url: true },
             },
           },
         },
@@ -50,10 +51,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "placeId is required" }, { status: 400 });
     }
 
+    // Resolve placeId if passed as slug
+    const targetPlace = await prisma.place.findFirst({
+      where: { OR: [{ id: placeId }, { slug: placeId }] },
+      select: { id: true },
+    });
+
+    if (!targetPlace) {
+      return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
+    }
+
     const favorite = await prisma.favorite.upsert({
-      where:  { userId_placeId: { userId: session.user.id, placeId } },
+      where:  { userId_placeId: { userId: session.user.id, placeId: targetPlace.id } },
       update: {},
-      create: { userId: session.user.id, placeId },
+      create: { userId: session.user.id, placeId: targetPlace.id },
     });
 
     return NextResponse.json({ favorite }, { status: 201 });
@@ -76,8 +87,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "placeId is required" }, { status: 400 });
     }
 
+    // Resolve placeId if passed as slug
+    const targetPlace = await prisma.place.findFirst({
+      where: { OR: [{ id: placeId }, { slug: placeId }] },
+      select: { id: true },
+    });
+
+    const targetId = targetPlace ? targetPlace.id : placeId;
+
     await prisma.favorite.deleteMany({
-      where: { userId: session.user.id, placeId },
+      where: { userId: session.user.id, placeId: targetId },
     });
 
     return NextResponse.json({ success: true });

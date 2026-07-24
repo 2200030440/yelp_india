@@ -118,28 +118,55 @@ export default function ProfilePage() {
     }
   }, [session]);
 
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      await usersApi.update({ name, city, bio });
+      const res = await usersApi.update({ name, city, bio });
+      if (res?.user) {
+        setName(res.user.name || name);
+        if (res.user.city) setCity(res.user.city);
+        if (res.user.bio) setBio(res.user.bio);
+      }
       toast("Profile updated successfully!", "success");
-    } catch {
-      toast("Profile saved locally.", "success");
+    } catch (err: any) {
+      toast(err.message || "Failed to update profile", "error");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleChangePassword = (e: React.FormEvent) => {
+  const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentPassword || !newPassword) {
-      toast("Please fill in both password fields.", "error");
+      toast("Please fill in both current and new password fields.", "error");
       return;
     }
-    toast("Password changed successfully!", "success");
-    setCurrentPassword("");
-    setNewPassword("");
+    if (newPassword.length < 6) {
+      toast("New password must be at least 6 characters long.", "error");
+      return;
+    }
+    setIsChangingPassword(true);
+    try {
+      const res = await fetch("/api/users/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update password");
+      }
+      toast(data.message || "Password changed successfully!", "success");
+      setCurrentPassword("");
+      setNewPassword("");
+    } catch (err: any) {
+      toast(err.message || "Failed to change password", "error");
+    } finally {
+      setIsChangingPassword(false);
+    }
   };
 
   const handleDeleteReview = async (id: string) => {
@@ -502,7 +529,7 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit">
+              <Button type="submit" isLoading={isChangingPassword}>
                 <CheckCircle2 className="h-4 w-4" /> Update Password
               </Button>
             </div>
