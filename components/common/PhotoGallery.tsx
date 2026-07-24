@@ -28,12 +28,16 @@ interface PhotoGalleryProps {
   className?: string;
 }
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=1200&q=80";
+
 export default function PhotoGallery({
   photos,
   placeName = "Place",
   className,
 }: PhotoGalleryProps) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const primaryPhoto = (photos && photos.find((p) => p.isPrimary)) || (photos && photos[0]);
+  const [heroSrc, setHeroSrc] = useState(primaryPhoto?.url || FALLBACK_IMAGE);
 
   const isOpen = lightboxIndex !== null;
   const current = isOpen ? photos[lightboxIndex!] : null;
@@ -81,8 +85,6 @@ export default function PhotoGallery({
     );
   }
 
-  const primaryPhoto = photos.find((p) => p.isPrimary) || photos[0];
-
   return (
     <>
       {/* ── Single Clean Hero Banner ────────────────────────────────────────── */}
@@ -98,12 +100,13 @@ export default function PhotoGallery({
         onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && setLightboxIndex(0)}
       >
         <Image
-          src={primaryPhoto.url}
-          alt={primaryPhoto.caption ?? `${placeName} main photo`}
+          src={heroSrc}
+          alt={primaryPhoto?.caption ?? `${placeName} main photo`}
           fill
           className="object-cover transition-transform duration-700 group-hover:scale-105"
           sizes="100vw"
           priority
+          onError={() => setHeroSrc(FALLBACK_IMAGE)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
 

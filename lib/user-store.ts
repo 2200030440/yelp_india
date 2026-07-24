@@ -1,7 +1,6 @@
 // lib/user-store.ts
-// Shared server-side dynamic user store for Yelp India.
-// Ensures instant real-time synchronization between Auth, Google Logins,
-// User Registrations, and the Admin Users Portal.
+// Shared server-side dynamic user store helper.
+// All users are stored in and queried directly from PostgreSQL / Prisma DB.
 
 import { getStateForCity } from "@/constants";
 
@@ -19,86 +18,18 @@ export interface DynamicUserItem {
   createdAt: string;
 }
 
-const INITIAL_USERS: DynamicUserItem[] = [
-  {
-    id: "admin-id-1",
-    name: "Yelp Admin",
-    email: "admin@yelpindia.com",
-    role: "Admin",
-    image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
-    provider: "credentials",
-    city: "Mumbai",
-    state: "Maharashtra",
-    reviewsCount: 18,
-    joined: "Jan 2026",
-    createdAt: new Date("2026-01-01").toISOString(),
-  },
-  {
-    id: "u1",
-    name: "Vikram Malhotra",
-    email: "vikram@example.com",
-    role: "User",
-    image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80",
-    provider: "credentials",
-    city: "Guntur",
-    state: "Andhra Pradesh",
-    reviewsCount: 14,
-    joined: "Jan 2026",
-    createdAt: new Date("2026-01-15").toISOString(),
-  },
-  {
-    id: "u2",
-    name: "Ananya Sharma",
-    email: "ananya@example.com",
-    role: "Moderator",
-    image: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&q=80",
-    provider: "credentials",
-    city: "Bengaluru",
-    state: "Karnataka",
-    reviewsCount: 42,
-    joined: "Dec 2025",
-    createdAt: new Date("2025-12-10").toISOString(),
-  },
-  {
-    id: "u3",
-    name: "Rahul Mehta",
-    email: "rahul@example.com",
-    role: "Admin",
-    image: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&q=80",
-    provider: "credentials",
-    city: "Hyderabad",
-    state: "Telangana",
-    reviewsCount: 8,
-    joined: "Nov 2025",
-    createdAt: new Date("2025-11-20").toISOString(),
-  },
-  {
-    id: "u4",
-    name: "Priya Patel",
-    email: "priya@example.com",
-    role: "User",
-    image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&q=80",
-    provider: "google",
-    city: "Vijayawada",
-    state: "Andhra Pradesh",
-    reviewsCount: 5,
-    joined: "Feb 2026",
-    createdAt: new Date("2026-02-05").toISOString(),
-  },
-];
-
 // Global persistent object across hot reloads in dev mode
 const globalUserStore = globalThis as unknown as {
   dynamicUsersStore?: DynamicUserItem[];
 };
 
 if (!globalUserStore.dynamicUsersStore) {
-  globalUserStore.dynamicUsersStore = [...INITIAL_USERS];
+  globalUserStore.dynamicUsersStore = [];
 }
 
 export const dynamicUsers = {
   getAll: (): DynamicUserItem[] => {
-    return globalUserStore.dynamicUsersStore ?? INITIAL_USERS;
+    return globalUserStore.dynamicUsersStore ?? [];
   },
 
   addOrUpdate: (input: {
@@ -111,7 +42,7 @@ export const dynamicUsers = {
     city?: string | null;
     state?: string | null;
   }): DynamicUserItem => {
-    const list = globalUserStore.dynamicUsersStore ?? INITIAL_USERS;
+    const list = globalUserStore.dynamicUsersStore ?? [];
     const normalizedEmail = input.email.toLowerCase().trim();
 
     const existingIndex = list.findIndex(
@@ -129,7 +60,7 @@ export const dynamicUsers = {
         ? input.name.trim()
         : normalizedEmail.split("@")[0].toUpperCase();
 
-    const cityVal = input.city || "Guntur";
+    const cityVal = input.city || "Mumbai";
     const stateVal = input.state || getStateForCity(cityVal);
 
     if (existingIndex >= 0) {
@@ -138,7 +69,7 @@ export const dynamicUsers = {
         ...existing,
         name: displayName,
         image: input.image ?? existing.image,
-        provider: input.provider ?? existing.provider ?? "google",
+        provider: input.provider ?? existing.provider ?? "credentials",
         role: (input.role as any) ?? existing.role,
         city: cityVal,
         state: stateVal,
@@ -153,8 +84,8 @@ export const dynamicUsers = {
       name: displayName,
       email: normalizedEmail,
       role: (input.role as any) || "User",
-      image: input.image || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80",
-      provider: input.provider || "google",
+      image: input.image || null,
+      provider: input.provider || "credentials",
       city: cityVal,
       state: stateVal,
       reviewsCount: 0,
@@ -167,7 +98,7 @@ export const dynamicUsers = {
   },
 
   delete: (idOrEmail: string): boolean => {
-    const list = globalUserStore.dynamicUsersStore ?? INITIAL_USERS;
+    const list = globalUserStore.dynamicUsersStore ?? [];
     const target = idOrEmail.toLowerCase().trim();
     globalUserStore.dynamicUsersStore = list.filter(
       (u) => u.id !== idOrEmail && u.email.toLowerCase().trim() !== target

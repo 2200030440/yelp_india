@@ -50,16 +50,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
       /* DB offline fallback */
     }
 
-    // Dynamic fallback store bridge
     const storePlace = dynamicPlaces.getBySlug(slug);
-
     if (storePlace) {
       return NextResponse.json({ place: storePlace });
     }
 
-    // Default first place fallback
-    const firstPlace = dynamicPlaces.getAll()[0];
-    return NextResponse.json({ place: firstPlace });
+    return NextResponse.json({ error: "Place not found" }, { status: 404 });
   } catch (error) {
     console.error("[places/slug/GET]", error);
     return NextResponse.json({ error: "Failed to fetch place" }, { status: 500 });

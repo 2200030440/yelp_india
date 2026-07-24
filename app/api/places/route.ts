@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           ],
         } : {}),
         ...(city && city !== "all" ? { city: { contains: city, mode: "insensitive" as const } } : {}),
-        ...(category ? { category: { slug: category } } : {}),
+        ...(category && category !== "all" ? { category: { slug: category } } : {}),
         ...(minRating > 0   ? { averageRating: { gte: minRating } }  : {}),
         ...(priceLevel > 0  ? { priceLevel }                         : {}),
         ...(featured        ? { isFeatured: true }                   : {}),
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
         sortBy === "newest"      ? { createdAt:     "desc" as const } :
                                    { averageRating: "desc" as const };
 
-      const [places, total] = await Promise.all([
+      const [dbPlaces, total] = await Promise.all([
         prisma.place.findMany({
           where,
           orderBy,
@@ -65,17 +65,17 @@ export async function GET(request: NextRequest) {
         prisma.place.count({ where }),
       ]);
 
-      if (places && places.length > 0) {
+      if (dbPlaces.length > 0 || !dynamicPlaces.getAll().length) {
         return NextResponse.json({
-          places,
-          pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+          places: dbPlaces,
+          pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
         });
       }
-    } catch {
-      /* DB offline fallback */
+    } catch (dbErr) {
+      console.warn("[places/GET] DB fetch warning:", dbErr);
     }
 
-    // Dynamic fallback store bridge
+    // Dynamic fallback store bridge (in case DB connection fails)
     let all = dynamicPlaces.getAll();
 
     if (q) {
@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       all = all.filter((p) => p.city.toLowerCase() === cityLower);
     }
 
-    if (category) {
+    if (category && category !== "all") {
       all = all.filter(
         (p) => p.category.slug.toLowerCase() === category.toLowerCase(),
       );
@@ -110,14 +110,6 @@ export async function GET(request: NextRequest) {
 
     if (featured) {
       all = all.filter((p) => p.isFeatured);
-    }
-
-    if (sortBy === "rating") {
-      all.sort((a, b) => b.averageRating - a.averageRating);
-    } else if (sortBy === "reviewCount") {
-      all.sort((a, b) => b.reviewCount - a.reviewCount);
-    } else if (sortBy === "newest") {
-      all.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
     const total = all.length;
@@ -146,13 +138,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name and City are required" }, { status: 400 });
     }
 
-    // Try DB insertion if available
     try {
       const session = await auth();
       if (session?.user?.id) {
         const user = await prisma.user.findUnique({ where: { id: session.user.id } });
         if (user?.role === "ADMIN" || user?.role === "MODERATOR") {
-          // ensure category exists or find default
           let categoryId = body.categoryId;
           if (!categoryId) {
             const firstCategory = await prisma.category.findFirst();
@@ -178,17 +168,14 @@ export async function POST(request: NextRequest) {
                 categoryId,
               },
             });
-            // also sync with dynamic store
-            dynamicPlaces.add(body);
             return NextResponse.json({ place: dbPlace }, { status: 201 });
           }
         }
       }
-    } catch {
-      /* DB offline fallback */
+    } catch (err) {
+      console.warn("DB creation warning:", err);
     }
 
-    // Fallback insertion into dynamic store
     const newPlace = dynamicPlaces.add(body);
     return NextResponse.json({ place: newPlace }, { status: 201 });
   } catch (error) {

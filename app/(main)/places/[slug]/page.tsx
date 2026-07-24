@@ -67,9 +67,7 @@ async function getPlaceBySlug(slug: string) {
     console.warn("DB query error in getPlaceBySlug:", err);
   }
 
-  // Fallback store
   const storePlace = dynamicPlaces.getBySlug(slug);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (storePlace) return storePlace as any;
 
   return null;

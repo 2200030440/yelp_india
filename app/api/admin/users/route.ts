@@ -11,61 +11,52 @@ export const revalidate = 0;
 
 export async function GET() {
   try {
-    let dbUsersFormatted: DynamicUserItem[] = [];
+    const dbUsers = await prisma.user.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { reviews: true } },
+        accounts: { select: { provider: true } },
+      },
+    });
 
-    try {
-      const dbUsers = await prisma.user.findMany({
-        orderBy: { createdAt: "desc" },
-        include: {
-          _count: { select: { reviews: true } },
-          accounts: { select: { provider: true } },
-        },
-      });
+    const dbUsersFormatted: DynamicUserItem[] = dbUsers.map((u) => {
+      const joinedDate = u.createdAt
+        ? new Date(u.createdAt).toLocaleDateString("en-US", {
+            month: "short",
+            year: "numeric",
+          })
+        : "Jan 2026";
 
-      dbUsersFormatted = dbUsers.map((u) => {
-        const joinedDate = u.createdAt
-          ? new Date(u.createdAt).toLocaleDateString("en-US", {
-              month: "short",
-              year: "numeric",
-            })
-          : "Jan 2026";
+      const hasGoogle = u.accounts.some((a) => a.provider === "google");
+      const roleLabel: "Admin" | "Moderator" | "User" =
+        u.role === "ADMIN" ? "Admin" : u.role === "MODERATOR" ? "Moderator" : "User";
 
-        const hasGoogle = u.accounts.some((a) => a.provider === "google");
-        const roleLabel: "Admin" | "Moderator" | "User" =
-          u.role === "ADMIN" ? "Admin" : u.role === "MODERATOR" ? "Moderator" : "User";
+      const cityVal = u.city || "Mumbai";
+      const stateVal = getStateForCity(cityVal);
 
-        const cityVal = u.city || "Guntur";
-        const stateVal = getStateForCity(cityVal);
-
-        return {
-          id: u.id,
-          name: u.name || u.email.split("@")[0],
-          email: u.email,
-          role: roleLabel,
-          image: u.image || null,
-          provider: hasGoogle ? "google" : "credentials",
-          city: cityVal,
-          state: stateVal,
-          reviewsCount: u._count.reviews,
-          joined: joinedDate,
-          createdAt: u.createdAt.toISOString(),
-        };
-      });
-    } catch {
-      /* DB offline fallback */
-    }
+      return {
+        id: u.id,
+        name: u.name || u.email.split("@")[0],
+        email: u.email,
+        role: roleLabel,
+        image: u.image || null,
+        provider: hasGoogle ? "google" : "credentials",
+        city: cityVal,
+        state: stateVal,
+        reviewsCount: u._count.reviews,
+        joined: joinedDate,
+        createdAt: u.createdAt.toISOString(),
+      };
+    });
 
     const fallbackUsers = dynamicUsers.getAll();
-
-    // Merge DB users & dynamic fallbacks deduplicating by email
     const emailMap = new Map<string, DynamicUserItem>();
 
-    // Dynamic users take first precedence for real-time additions
-    fallbackUsers.forEach((u) => {
+    dbUsersFormatted.forEach((u) => {
       emailMap.set(u.email.toLowerCase().trim(), u);
     });
 
-    dbUsersFormatted.forEach((u) => {
+    fallbackUsers.forEach((u) => {
       const emailKey = u.email.toLowerCase().trim();
       if (!emailMap.has(emailKey)) {
         emailMap.set(emailKey, u);
@@ -98,8 +89,8 @@ export async function DELETE(request: NextRequest) {
 
     try {
       await prisma.user.delete({ where: { id: userId } });
-    } catch {
-      /* DB offline fallback */
+    } catch (err) {
+      console.warn("DB user delete skipped or failed:", err);
     }
 
     dynamicUsers.delete(userId);

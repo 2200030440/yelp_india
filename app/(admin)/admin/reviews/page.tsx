@@ -28,69 +28,8 @@ interface ReviewItem {
   status: "Approved" | "Pending" | "Rejected";
 }
 
-const INITIAL_REVIEWS: ReviewItem[] = [
-  {
-    id: "r1",
-    user: "Vikram Malhotra",
-    restaurant: "Trishna Coastal Dining",
-    city: "Mumbai",
-    state: "Maharashtra",
-    rating: 5,
-    comment:
-      "The Garlic Butter Crab is absolute perfection! Served piping hot with fresh appams. Outstanding dining experience in Mumbai.",
-    date: "10 minutes ago",
-    status: "Approved",
-  },
-  {
-    id: "r2",
-    user: "Ananya Sharma",
-    restaurant: "Paradise Biryani House",
-    city: "Hyderabad",
-    state: "Telangana",
-    rating: 4,
-    comment:
-      "Great authentic Hyderabadi flavor, but the restaurant was super crowded during Sunday evening peak hours.",
-    date: "25 minutes ago",
-    status: "Approved",
-  },
-  {
-    id: "r3",
-    user: "Dev Kumar",
-    restaurant: "Venkatesh Grand",
-    city: "Guntur",
-    state: "Andhra Pradesh",
-    rating: 5,
-    comment: "Excellent South Indian meals and crisp tiffins in Guntur!",
-    date: "40 minutes ago",
-    status: "Approved",
-  },
-  {
-    id: "r4",
-    user: "Sneha Patel",
-    restaurant: "Bukhara - ITC Maurya",
-    city: "New Delhi",
-    state: "Delhi",
-    rating: 5,
-    comment:
-      "Dal Bukhara cooked overnight for 18 hours is worth every rupee. Outstanding hospitality!",
-    date: "3 hours ago",
-    status: "Approved",
-  },
-  {
-    id: "r5",
-    user: "Kiran Rao",
-    restaurant: "Palle vindu",
-    city: "Atmakur",
-    state: "Andhra Pradesh",
-    rating: 5,
-    comment: "Delicious local authentic Andhra food and great service.",
-    date: "5 hours ago",
-    status: "Pending",
-  },
-];
-
 export default function ReviewModerationPage() {
-  const [reviews, setReviews] = useState<ReviewItem[]>(INITIAL_REVIEWS);
+  const [reviews, setReviews] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedState, setSelectedState] = useState("all");
@@ -100,26 +39,15 @@ export default function ReviewModerationPage() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/reviews?t=" + Date.now());
+      const res = await fetch("/api/admin/reviews?t=" + Date.now());
       if (res.ok) {
         const data = await res.json();
-        if (data.reviews && data.reviews.length > 0) {
-          const mapped = data.reviews.map((r: any) => ({
-            id: r.id,
-            user: r.user?.name || "Diner",
-            restaurant: r.place?.name || "Restaurant",
-            city: r.place?.city || "Guntur",
-            state: r.place?.state || "Andhra Pradesh",
-            rating: r.rating,
-            comment: r.content,
-            date: new Date(r.createdAt).toLocaleDateString(),
-            status: r.isApproved ? "Approved" : "Pending",
-          }));
-          setReviews(mapped);
+        if (data.reviews) {
+          setReviews(data.reviews);
         }
       }
-    } catch {
-      /* Keep fallback reviews */
+    } catch (err) {
+      console.error("Failed to fetch admin reviews", err);
     } finally {
       setLoading(false);
     }

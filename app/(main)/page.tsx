@@ -28,94 +28,21 @@ import { cn, formatRating, formatPriceLevel } from "@/lib/utils";
 import CitySelector from "@/components/common/CitySelector";
 import { useLocationContext } from "@/context/LocationContext";
 
-// ─── Restaurant Data ─────────────────────────────────────────────────────────
+// ─── Restaurant Types ───────────────────────────────────────────────────────
 
-const FEATURED_RESTAURANTS = [
-  {
-    id: "1",
-    name: "Bukhara - ITC Maurya",
-    slug: "bukhara-delhi",
-    cuisine: "North Indian / Tandoori",
-    city: "New Delhi",
-    rating: 4.9,
-    reviewCount: 2847,
-    priceLevel: 4,
-    image:
-      "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=80",
-    isOpen: true,
-    badge: "Award Winner",
-  },
-  {
-    id: "2",
-    name: "Trishna Coastal Dining",
-    slug: "trishna-mumbai",
-    cuisine: "Coastal Seafood",
-    city: "Mumbai",
-    rating: 4.7,
-    reviewCount: 1923,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80",
-    isOpen: true,
-    badge: "Most Loved",
-  },
-  {
-    id: "3",
-    name: "Indian Accent",
-    slug: "indian-accent-delhi",
-    cuisine: "Modern Indian Fine Dining",
-    city: "New Delhi",
-    rating: 4.8,
-    reviewCount: 3156,
-    priceLevel: 4,
-    image:
-      "https://images.unsplash.com/photo-1567337710282-00832b415979?w=800&q=80",
-    isOpen: false,
-    badge: "Top Pick",
-  },
-  {
-    id: "4",
-    name: "Paradise Biryani House",
-    slug: "paradise-hyderabad",
-    cuisine: "Hyderabadi Biryani & Kebabs",
-    city: "Hyderabad",
-    rating: 4.6,
-    reviewCount: 5432,
-    priceLevel: 2,
-    image:
-      "https://images.unsplash.com/photo-1563379091339-03246963d7d3?w=800&q=80",
-    isOpen: true,
-    badge: "Iconic",
-  },
-  {
-    id: "5",
-    name: "Karavalli Heritage Kitchen",
-    slug: "karavalli-bengaluru",
-    cuisine: "South Indian Coastal",
-    city: "Bengaluru",
-    rating: 4.7,
-    reviewCount: 1654,
-    priceLevel: 3,
-    image:
-      "https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=800&q=80",
-    isOpen: true,
-    badge: null,
-  },
-  {
-    id: "6",
-    name: "Saravana Bhavan",
-    slug: "saravana-bhavan-chennai",
-    cuisine: "Authentic South Indian Tiffin",
-    city: "Chennai",
-    rating: 4.5,
-    reviewCount: 8921,
-    priceLevel: 1,
-    image:
-      "https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=800&q=80",
-    isOpen: true,
-    badge: "Local Favorite",
-  },
-];
+interface FeaturedPlace {
+  id: string;
+  name: string;
+  slug: string;
+  cuisine: string;
+  city: string;
+  rating: number;
+  reviewCount: number;
+  priceLevel: number;
+  image: string;
+  isOpen: boolean;
+  badge: string | null;
+}
 
 const RESTAURANT_CATEGORIES = [
   {
@@ -347,7 +274,7 @@ function HeroSearch() {
 
 // ─── Restaurant Card ─────────────────────────────────────────────────────────
 
-function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) {
+function RestaurantCard({ place }: { place: FeaturedPlace }) {
   return (
     <Link
       href={`/places/${place.slug}`}
@@ -433,7 +360,7 @@ function RestaurantCard({ place }: { place: (typeof FEATURED_RESTAURANTS)[0] }) 
 
 function FeaturedSection() {
   const { location } = useLocationContext();
-  const [places, setPlaces] = useState<typeof FEATURED_RESTAURANTS>(FEATURED_RESTAURANTS);
+  const [places, setPlaces] = useState<FeaturedPlace[]>([]);
 
   useEffect(() => {
     async function fetchFeatured() {
@@ -455,7 +382,7 @@ function FeaturedSection() {
             isOpen: true,
             badge: p.isFeatured ? "Featured" : null,
           }));
-          if (mapped.length > 0) setPlaces(mapped.slice(0, 6));
+          setPlaces(mapped.slice(0, 6));
         }
       } catch (err) {
         console.error("Failed to fetch featured places", err);

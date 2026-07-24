@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { MapPin, Heart } from "lucide-react";
@@ -21,6 +24,8 @@ export interface RestaurantCardProps {
   onBookmarkToggle?: (id: string) => void;
 }
 
+const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
+
 export default function RestaurantCard({
   name,
   slug,
@@ -36,16 +41,19 @@ export default function RestaurantCard({
   isVegOnly = false,
   onBookmarkToggle,
 }: RestaurantCardProps) {
+  const [imgSrc, setImgSrc] = useState(image || FALLBACK_IMAGE);
+
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
       {/* Image Container */}
       <Link href={`/places/${slug}`} className="relative h-48 overflow-hidden bg-zinc-100">
         <Image
-          src={image}
+          src={imgSrc}
           alt={name}
           fill
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          onError={() => setImgSrc(FALLBACK_IMAGE)}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
