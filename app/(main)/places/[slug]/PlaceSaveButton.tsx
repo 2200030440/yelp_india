@@ -1,47 +1,30 @@
 "use client";
 // app/(main)/places/[slug]/PlaceSaveButton.tsx
-// Save/unsave button — syncs with /api/favorites
+// Save/unsave button — syncs with FavoritesContext & /api/favorites
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { Heart, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/toast";
-import { favoritesApi } from "@/lib/api";
+import { useFavorites } from "@/context/FavoritesContext";
 import { cn } from "@/lib/utils";
 
 interface Props {
   placeId:   string;
   placeName: string;
-  saved?:    boolean;
+  slug?:     string;
 }
 
-export default function PlaceSaveButton({ placeId, placeName, saved = false }: Props) {
-  const { data: session } = useSession();
-  const router            = useRouter();
-  const { toast }         = useToast();
-  const [isSaved, setIsSaved] = useState(saved);
+export default function PlaceSaveButton({ placeId, placeName, slug }: Props) {
+  const { isSaved, toggleSave } = useFavorites();
   const [loading, setLoading] = useState(false);
 
+  const identifier = slug || placeId;
+  const saved = isSaved(identifier) || isSaved(placeId);
+
   const handleToggle = async () => {
-    if (!session?.user) {
-      router.push("/login");
-      return;
-    }
     setLoading(true);
     try {
-      if (isSaved) {
-        await favoritesApi.remove(placeId);
-        setIsSaved(false);
-        toast(`Removed "${placeName}" from saved places`, "info");
-      } else {
-        await favoritesApi.add(placeId);
-        setIsSaved(true);
-        toast(`"${placeName}" added to your saved places!`, "success");
-      }
-    } catch {
-      toast("Something went wrong. Please try again.", "error");
+      await toggleSave({ id: placeId, slug: slug || placeId, name: placeName });
     } finally {
       setLoading(false);
     }
@@ -54,15 +37,15 @@ export default function PlaceSaveButton({ placeId, placeName, saved = false }: P
       disabled={loading}
       className={cn(
         "bg-zinc-800 border-zinc-700 text-white hover:bg-zinc-700 gap-2",
-        isSaved && "border-red-500 text-red-400",
+        saved && "border-red-500 text-red-400 bg-red-950/40",
       )}
     >
       {loading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-4 w-4 animate-spin text-red-500" />
       ) : (
-        <Heart className={cn("h-4 w-4", isSaved && "fill-red-500 text-red-500")} />
+        <Heart className={cn("h-4 w-4 transition-colors", saved ? "fill-red-500 text-red-500" : "text-white")} />
       )}
-      {isSaved ? "Saved" : "Save"}
+      {saved ? "Saved to Wishlist" : "Save"}
     </Button>
   );
 }

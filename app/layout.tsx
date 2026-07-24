@@ -5,6 +5,7 @@ import { siteConfig } from "@/config/site";
 import AuthProvider from "@/providers/AuthProvider";
 import { ToastProvider } from "@/components/ui/toast";
 import { LocationProvider } from "@/context/LocationContext";
+import { FavoritesProvider } from "@/context/FavoritesContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -73,7 +74,9 @@ export default function RootLayout({
       <body className="min-h-full bg-background font-sans antialiased">
         <LocationProvider>
           <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <FavoritesProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </FavoritesProvider>
           </AuthProvider>
         </LocationProvider>
       </body>

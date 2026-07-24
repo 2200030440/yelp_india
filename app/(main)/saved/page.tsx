@@ -1,86 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useSession } from "next-auth/react";
 import { Heart, UtensilsCrossed, Loader2 } from "lucide-react";
 import RestaurantCard from "@/components/common/RestaurantCard";
 import { Button } from "@/components/ui/button";
-import { favoritesApi } from "@/lib/api";
-import { useToast } from "@/components/ui/toast";
-
-interface SavedPlaceItem {
-  id: string;
-  name: string;
-  slug: string;
-  cuisine: string;
-  city: string;
-  rating: number;
-  reviewCount: number;
-  priceLevel: number;
-  image: string;
-  isOpen: boolean;
-}
+import { useFavorites } from "@/context/FavoritesContext";
 
 export default function SavedPlacesPage() {
-  const { data: session } = useSession();
-  const { toast } = useToast();
-  const [savedPlaces, setSavedPlaces] = useState<SavedPlaceItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch real saved places for the logged in user
-  useEffect(() => {
-    if (session?.user) {
-      favoritesApi
-        .list()
-        .then(({ favorites }) => {
-          if (favorites && favorites.length > 0) {
-            setSavedPlaces(
-              favorites.map((f: { id: string; place?: { id?: string; name?: string; slug?: string; category?: { name?: string }; city?: string; averageRating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }> } }) => ({
-                id: f.place?.id ?? f.id,
-                name: f.place?.name ?? "Saved Place",
-                slug: f.place?.slug ?? "",
-                cuisine: f.place?.category?.name ?? "Indian Restaurant",
-                city: f.place?.city ?? "India",
-                rating: f.place?.averageRating ?? 4.8,
-                reviewCount: f.place?.reviewCount ?? 0,
-                priceLevel: f.place?.priceLevel ?? 2,
-                image:
-                  f.place?.photos?.[0]?.url ??
-                  "https://images.unsplash.com/photo-1585937421612-70a008356fbe?w=800&q=80",
-                isOpen: true,
-              })),
-            );
-          } else {
-            setSavedPlaces([]);
-          }
-        })
-        .catch(() => {
-          setSavedPlaces([]);
-        })
-        .finally(() => {
-          setLoading(false);
-        });
-    } else {
-      Promise.resolve().then(() => {
-        setSavedPlaces([]);
-        setLoading(false);
-      });
-    }
-  }, [session]);
-
-  const handleRemoveBookmark = async (slug: string) => {
-    const target = savedPlaces.find((p) => p.slug === slug);
-    if (target) {
-      try {
-        await favoritesApi.remove(target.id);
-      } catch {
-        /* ignore */
-      }
-      toast(`Removed "${target.name}" from your saved places`, "info");
-    }
-    setSavedPlaces((prev) => prev.filter((p) => p.slug !== slug));
-  };
+  const { savedPlaces, loading } = useFavorites();
 
   return (
     <div className="bg-zinc-50 min-h-screen py-10 px-4">
@@ -111,7 +38,6 @@ export default function SavedPlacesPage() {
                 key={place.id}
                 {...place}
                 isSaved={true}
-                onBookmarkToggle={handleRemoveBookmark}
               />
             ))}
           </div>

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { MapPin, Heart } from "lucide-react";
 import StarRating from "@/components/common/StarRating";
 import { cn, formatRating, formatPriceLevel } from "@/lib/utils";
+import { useFavorites } from "@/context/FavoritesContext";
 
 export interface RestaurantCardProps {
   id: string;
@@ -21,12 +22,13 @@ export interface RestaurantCardProps {
   badge?: string | null;
   isSaved?: boolean;
   isVegOnly?: boolean;
-  onBookmarkToggle?: (id: string) => void;
+  onBookmarkToggle?: (identifier: string) => void;
 }
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80";
 
 export default function RestaurantCard({
+  id,
   name,
   slug,
   cuisine,
@@ -37,11 +39,35 @@ export default function RestaurantCard({
   image,
   isOpen = true,
   badge,
-  isSaved = false,
+  isSaved: propIsSaved,
   isVegOnly = false,
   onBookmarkToggle,
 }: RestaurantCardProps) {
   const [imgSrc, setImgSrc] = useState(image || FALLBACK_IMAGE);
+  const { isSaved: checkIsSaved, toggleSave } = useFavorites();
+
+  const saved = propIsSaved ?? (checkIsSaved(slug) || checkIsSaved(id));
+
+  const handleHeartClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (onBookmarkToggle) {
+      onBookmarkToggle(slug || id);
+    } else {
+      toggleSave({
+        id,
+        slug,
+        name,
+        cuisine,
+        city,
+        rating,
+        reviewCount,
+        priceLevel,
+        image,
+      });
+    }
+  };
 
   return (
     <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
@@ -87,21 +113,20 @@ export default function RestaurantCard({
         </span>
       </Link>
 
-      {/* Bookmark Button */}
-      {onBookmarkToggle && (
-        <button
-          onClick={() => onBookmarkToggle(slug)}
-          className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-zinc-600 shadow-sm backdrop-blur-sm transition-transform hover:scale-110 hover:text-red-600"
-          aria-label="Save Restaurant"
-        >
-          <Heart
-            className={cn(
-              "h-4 w-4",
-              isSaved ? "fill-red-600 text-red-600" : "text-zinc-600",
-            )}
-          />
-        </button>
-      )}
+      {/* Heart Bookmark Button - Always Available */}
+      <button
+        type="button"
+        onClick={handleHeartClick}
+        className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 text-zinc-600 shadow-md backdrop-blur-sm transition-transform hover:scale-110 hover:text-red-600"
+        aria-label={saved ? "Remove from saved places" : "Save restaurant"}
+      >
+        <Heart
+          className={cn(
+            "h-4 w-4 transition-colors",
+            saved ? "fill-red-600 text-red-600" : "text-zinc-600 hover:text-red-500",
+          )}
+        />
+      </button>
 
       {/* Details Section */}
       <div className="flex flex-1 flex-col gap-2 p-4">

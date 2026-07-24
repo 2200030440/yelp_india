@@ -198,7 +198,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
             {/* Actions */}
             <div className="flex items-center gap-3 shrink-0">
-              <PlaceSaveButton placeId={place.id} placeName={place.name} />
+              <PlaceSaveButton placeId={place.id} placeName={place.name} slug={place.slug} />
             </div>
           </div>
 
