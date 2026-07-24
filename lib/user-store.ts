@@ -60,7 +60,9 @@ export const dynamicUsers = {
         ? input.name.trim()
         : normalizedEmail.split("@")[0].toUpperCase();
 
-    const cityVal = input.city || "Mumbai";
+    const cities = ["Guntur", "Hyderabad", "Vijayawada", "Visakhapatnam", "Bengaluru", "Mumbai", "New Delhi", "Chennai", "Kolkata", "Pune", "Jaipur"];
+    const hash = normalizedEmail.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const cityVal = input.city || cities[hash % cities.length];
     const stateVal = input.state || getStateForCity(cityVal);
 
     if (existingIndex >= 0) {

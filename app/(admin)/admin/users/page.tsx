@@ -340,7 +340,7 @@ export default function UsersAdminPage() {
                   <td className="px-6 py-4 text-zinc-600 font-medium">{u.email}</td>
                   <td className="px-6 py-4">
                     <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-800 bg-zinc-100 px-2.5 py-1 rounded-lg">
-                      📍 {u.city || "Guntur"}{u.state ? `, ${u.state}` : ", Andhra Pradesh"}
+                      📍 {u.city || "Guntur"}{u.state ? `, ${u.state}` : ""}
                     </span>
                   </td>
                   <td className="px-6 py-4">

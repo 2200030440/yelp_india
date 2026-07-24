@@ -9,6 +9,28 @@ import { getStateForCity } from "@/constants";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const DIVERSE_CITIES = [
+  "Guntur",
+  "Hyderabad",
+  "Vijayawada",
+  "Visakhapatnam",
+  "Bengaluru",
+  "Mumbai",
+  "New Delhi",
+  "Chennai",
+  "Kolkata",
+  "Pune",
+  "Jaipur",
+];
+
+function getCityForUser(email: string, existingCity?: string | null, idx: number = 0): string {
+  if (existingCity && existingCity.trim().length > 0) {
+    return existingCity.trim();
+  }
+  const hash = email.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) + idx;
+  return DIVERSE_CITIES[hash % DIVERSE_CITIES.length];
+}
+
 export async function GET() {
   try {
     const dbUsers = await prisma.user.findMany({
@@ -19,19 +41,19 @@ export async function GET() {
       },
     });
 
-    const dbUsersFormatted: DynamicUserItem[] = dbUsers.map((u) => {
+    const dbUsersFormatted: DynamicUserItem[] = dbUsers.map((u, idx) => {
       const joinedDate = u.createdAt
         ? new Date(u.createdAt).toLocaleDateString("en-US", {
             month: "short",
             year: "numeric",
           })
-        : "Jan 2026";
+        : "Jul 2026";
 
       const hasGoogle = u.accounts.some((a) => a.provider === "google");
       const roleLabel: "Admin" | "Moderator" | "User" =
         u.role === "ADMIN" ? "Admin" : u.role === "MODERATOR" ? "Moderator" : "User";
 
-      const cityVal = u.city || "Mumbai";
+      const cityVal = getCityForUser(u.email, u.city, idx);
       const stateVal = getStateForCity(cityVal);
 
       return {
