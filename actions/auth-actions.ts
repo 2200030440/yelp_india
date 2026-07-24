@@ -6,11 +6,13 @@
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { dynamicUsers } from "@/lib/user-store";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  city: z.string().optional(),
 });
 
 export interface AuthActionResult {
@@ -34,8 +36,18 @@ export async function registerUserAction(
       };
     }
 
-    const { name, email, password } = parsed.data;
+    const { name, email, password, city } = parsed.data;
     const normalizedEmail = email.toLowerCase().trim();
+    const cityVal = city || "Guntur";
+
+    // Always sync into dynamic user store for instant admin visibility
+    dynamicUsers.addOrUpdate({
+      name: name.trim(),
+      email: normalizedEmail,
+      provider: "credentials",
+      role: "User",
+      city: cityVal,
+    });
 
     try {
       // Check if user already exists in Prisma DB
@@ -76,3 +88,4 @@ export async function registerUserAction(
     };
   }
 }
+

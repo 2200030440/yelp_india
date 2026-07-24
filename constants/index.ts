@@ -148,6 +148,7 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state:
   "delhi": { lat: 28.6139, lng: 77.2090, state: "Delhi" },
   "new delhi": { lat: 28.6139, lng: 77.2090, state: "Delhi" },
   "bengaluru": { lat: 12.9716, lng: 77.5946, state: "Karnataka" },
+  "bangalore": { lat: 12.9716, lng: 77.5946, state: "Karnataka" },
   "hyderabad": { lat: 17.3850, lng: 78.4867, state: "Telangana" },
   "ahmedabad": { lat: 23.0225, lng: 72.5714, state: "Gujarat" },
   "chennai": { lat: 13.0827, lng: 80.2707, state: "Tamil Nadu" },
@@ -177,8 +178,31 @@ export const CITY_COORDINATES: Record<string, { lat: number; lng: number; state:
   "vizag": { lat: 17.6868, lng: 83.2185, state: "Andhra Pradesh" },
   "tirupati": { lat: 13.6288, lng: 79.4192, state: "Andhra Pradesh" },
   "kakinada": { lat: 16.9891, lng: 82.2475, state: "Andhra Pradesh" },
+  "atmakur": { lat: 15.8828, lng: 78.5833, state: "Andhra Pradesh" },
+  "mangalagiri": { lat: 16.4357, lng: 80.5500, state: "Andhra Pradesh" },
+  "pedavadlapudi": { lat: 16.4250, lng: 80.5750, state: "Andhra Pradesh" },
+  "nutakki": { lat: 16.4100, lng: 80.6000, state: "Andhra Pradesh" },
+  "rajahmundry": { lat: 17.0005, lng: 81.8040, state: "Andhra Pradesh" },
+  "nellore": { lat: 14.4426, lng: 79.9865, state: "Andhra Pradesh" },
+  "kurnool": { lat: 15.8281, lng: 78.0373, state: "Andhra Pradesh" },
+  "anantapur": { lat: 14.6819, lng: 77.6006, state: "Andhra Pradesh" },
   "warangal": { lat: 17.9689, lng: 79.5941, state: "Telangana" },
+  "secunderabad": { lat: 17.4399, lng: 78.4983, state: "Telangana" },
 };
+
+export function getStateForCity(city?: string | null): string {
+  if (!city) return "Andhra Pradesh";
+  const cityKey = city.toLowerCase().trim();
+  if (CITY_COORDINATES[cityKey]?.state) {
+    return CITY_COORDINATES[cityKey].state;
+  }
+  for (const [key, data] of Object.entries(CITY_COORDINATES)) {
+    if (cityKey.includes(key) || key.includes(cityKey)) {
+      return data.state;
+    }
+  }
+  return "Andhra Pradesh";
+}
 
 // -----------------------------------------------------------------
 // Restaurant Cuisine & Category types

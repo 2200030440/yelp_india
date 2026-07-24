@@ -132,6 +132,7 @@ export default function RegisterPage() {
         name: data.name,
         email: data.email,
         password: data.password,
+        city: data.city || "Guntur",
       });
 
       setIsLoading(false);

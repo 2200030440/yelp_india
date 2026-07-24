@@ -8,6 +8,7 @@ import GoogleProvider from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/auth.config";
+import { dynamicUsers } from "@/lib/user-store";
 import type { Role } from "@prisma/client";
 
 declare module "next-auth" {
@@ -32,6 +33,13 @@ function createResilientAdapter(p: typeof prisma) {
   return {
     ...base,
     async createUser(user: AdapterUserParam) {
+      dynamicUsers.addOrUpdate({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        image: user.image,
+        provider: "google",
+      });
       try {
         return await base.createUser!(user);
       } catch (e) {
@@ -87,6 +95,20 @@ function createResilientAdapter(p: typeof prisma) {
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   adapter: createResilientAdapter(prisma),
+  events: {
+    async signIn({ user, account }) {
+      if (user?.email) {
+        dynamicUsers.addOrUpdate({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          provider: account?.provider || "google",
+          role: (user.role as any) || "User",
+        });
+      }
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.AUTH_GOOGLE_ID ?? "placeholder-google-id",
@@ -112,16 +134,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           let dbUser = null;
           try {
             dbUser = await prisma.user.findUnique({ where: { email } });
+            if (!dbUser) {
+              dbUser = await prisma.user.create({
+                data: {
+                  email,
+                  name: email.split("@")[0].toUpperCase(),
+                  image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80",
+                  role: "USER",
+                },
+              });
+            }
           } catch {
             /* DB offline */
           }
-          return {
+
+          const userObj = {
             id: dbUser?.id ?? `user-google-${Date.now()}`,
             name: dbUser?.name ?? email.split("@")[0].toUpperCase(),
             email: email,
             image: dbUser?.image ?? "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80",
             role: (dbUser?.role as Role) ?? ("USER" as Role),
           };
+
+          dynamicUsers.addOrUpdate({
+            id: userObj.id,
+            name: userObj.name,
+            email: userObj.email,
+            image: userObj.image,
+            provider: "google",
+            role: "User",
+          });
+
+          return userObj;
         }
 
         try {
@@ -132,13 +176,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (user && user.passwordHash) {
             const isValid = await bcrypt.compare(password, user.passwordHash);
             if (isValid) {
-              return {
+              const resUser = {
                 id: user.id,
                 name: user.name ?? email.split("@")[0],
                 email: user.email,
                 image: user.image ?? null,
                 role: user.role,
               };
+
+              dynamicUsers.addOrUpdate({
+                id: resUser.id,
+                name: resUser.name,
+                email: resUser.email,
+                image: resUser.image,
+                provider: "credentials",
+                role: resUser.role === "ADMIN" ? "Admin" : resUser.role === "MODERATOR" ? "Moderator" : "User",
+              });
+
+              return resUser;
             }
           }
         } catch {
@@ -147,24 +202,42 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         // Admin fallback credentials
         if (email === "admin@yelpindia.com") {
-          return {
+          const adminUser = {
             id: "admin-id-1",
             name: "Yelp Admin",
             email: "admin@yelpindia.com",
             image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80",
             role: "ADMIN" as Role,
           };
+          dynamicUsers.addOrUpdate({
+            id: adminUser.id,
+            name: adminUser.name,
+            email: adminUser.email,
+            image: adminUser.image,
+            provider: "credentials",
+            role: "Admin",
+          });
+          return adminUser;
         }
 
         // General fallback for seamless user registration & login when DB is unconfigured
         if (email.includes("@") && password.length >= 6) {
-          return {
+          const genUser = {
             id: `user-${Date.now()}`,
             name: email.split("@")[0].toUpperCase(),
             email: email,
             image: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&q=80",
             role: "USER" as Role,
           };
+          dynamicUsers.addOrUpdate({
+            id: genUser.id,
+            name: genUser.name,
+            email: genUser.email,
+            image: genUser.image,
+            provider: "credentials",
+            role: "User",
+          });
+          return genUser;
         }
 
         return null;
@@ -172,3 +245,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
 });
+
