@@ -160,7 +160,7 @@ const TOP_CITIES = [
     name: "Hyderabad",
     tagline: "World Famous Biryani & Irani Chai",
     count: "3,400+ Spots",
-    image: "https://images.unsplash.com/photo-1605649487212-47bdab064df7?w=600&q=80",
+    image: "https://images.unsplash.com/photo-1626014903708-691955774b14?w=600&q=80",
   },
   {
     name: "Chennai",
