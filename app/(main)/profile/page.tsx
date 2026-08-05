@@ -3,8 +3,9 @@
 // app/(main)/profile/page.tsx
 // User Profile Page with Gamification, Level Badges, Activity Breakdown & Account Settings
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import {
   Mail,
@@ -22,15 +23,19 @@ import {
   Lock,
   Award,
   ThumbsUp,
-  Image as ImageIcon,
   Sparkles,
+  Upload,
+  User as UserIcon,
+  UtensilsCrossed,
 } from "lucide-react";
 import StarRating from "@/components/common/StarRating";
+import RestaurantCard from "@/components/common/RestaurantCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { cn } from "@/lib/utils";
 import { usersApi, reviewsApi } from "@/lib/api";
+import { useFavorites } from "@/context/FavoritesContext";
 
 interface UserReviewItem {
   id: string;
@@ -52,11 +57,55 @@ interface DinerBadge {
   progress: number;
 }
 
+// Client-side canvas image compression (downscaling photos to ~15KB for ultra-fast saving)
+function compressImage(file: File, maxWidth = 300, maxHeight = 300, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          return resolve(event.target?.result as string);
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(dataUrl);
+      };
+      img.onerror = () => reject(new Error("Failed to process image"));
+      img.src = event.target?.result as string;
+    };
+    reader.onerror = () => reject(new Error("Failed to read image file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function ProfilePage() {
   const { data: session } = useSession();
   const { toast } = useToast();
+  const { savedPlaces } = useFavorites();
 
-  const [activeTab, setActiveTab] = useState<"reviews" | "badges" | "edit" | "security">("reviews");
+  const [activeTab, setActiveTab] = useState<"reviews" | "saved" | "badges" | "edit" | "security">("reviews");
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -64,16 +113,24 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [city, setCity] = useState("");
   const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
   const [joinedDate, setJoinedDate] = useState("Recently");
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Password change state
+  // Password change & account type state
+  const [hasPassword, setHasPassword] = useState<boolean>(true);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // Sync profile details and user's actual reviews
   useEffect(() => {
     if (session?.user) {
+      if (session.user.image) {
+        setAvatarUrl(session.user.image);
+      }
       usersApi
         .me()
         .then(({ user }) => {
@@ -81,6 +138,9 @@ export default function ProfilePage() {
             setName(user.name ?? session.user.name ?? session.user.email?.split("@")[0] ?? "User");
             if (user.city) setCity(user.city);
             if (user.bio) setBio(user.bio);
+            if (user.image) setAvatarUrl(user.image);
+            if (user.hasPassword !== undefined) setHasPassword(user.hasPassword);
+
             if (user.createdAt) {
               const d = new Date(user.createdAt);
               setJoinedDate(d.toLocaleDateString("en-IN", { month: "short", year: "numeric" }));
@@ -118,17 +178,41 @@ export default function ProfilePage() {
     }
   }, [session]);
 
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast("Image size must be less than 10MB", "error");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const compressed = await compressImage(file, 300, 300, 0.85);
+      setAvatarUrl(compressed);
+      const res = await usersApi.update({ image: compressed });
+      if (res?.user?.image) {
+        setAvatarUrl(res.user.image);
+      }
+      toast("Profile picture updated successfully!", "success");
+    } catch (err: any) {
+      toast(err.message || "Failed to update avatar", "error");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     try {
-      const res = await usersApi.update({ name, city, bio });
+      const res = await usersApi.update({ name, city, bio, image: avatarUrl });
       if (res?.user) {
         setName(res.user.name || name);
         if (res.user.city) setCity(res.user.city);
         if (res.user.bio) setBio(res.user.bio);
+        if (res.user.image) setAvatarUrl(res.user.image);
       }
       toast("Profile updated successfully!", "success");
     } catch (err: any) {
@@ -140,8 +224,12 @@ export default function ProfilePage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentPassword || !newPassword) {
-      toast("Please fill in both current and new password fields.", "error");
+    if (hasPassword && !currentPassword) {
+      toast("Please enter your current password.", "error");
+      return;
+    }
+    if (!newPassword) {
+      toast("Please enter a new password.", "error");
       return;
     }
     if (newPassword.length < 6) {
@@ -159,9 +247,10 @@ export default function ProfilePage() {
       if (!res.ok) {
         throw new Error(data.error || "Failed to update password");
       }
-      toast(data.message || "Password changed successfully!", "success");
+      toast(data.message || "Password updated successfully!", "success");
       setCurrentPassword("");
       setNewPassword("");
+      setHasPassword(true);
     } catch (err: any) {
       toast(err.message || "Failed to change password", "error");
     } finally {
@@ -223,15 +312,40 @@ export default function ProfilePage() {
 
   return (
     <div className="bg-zinc-50 min-h-screen py-10 px-4">
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleAvatarFileChange}
+      />
+
       <div className="container max-w-5xl">
         {/* Header Profile Card */}
         <div className="rounded-3xl border border-zinc-200 bg-white p-6 md:p-8 shadow-sm mb-6 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
-            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-red-600 to-orange-600 font-bold text-2xl text-white shadow-md">
-              {displayName[0]?.toUpperCase()}
+            {/* Avatar Profile Box */}
+            <div className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-zinc-200 overflow-hidden shadow-md group">
+              {avatarUrl ? (
+                <Image
+                  src={avatarUrl}
+                  alt={displayName}
+                  fill
+                  className="object-cover"
+                  unoptimized
+                />
+              ) : (
+                <div className="font-bold text-2xl text-white bg-gradient-to-br from-red-600 to-orange-600 w-full h-full flex items-center justify-center">
+                  {displayName[0]?.toUpperCase()}
+                </div>
+              )}
+
               <button
-                onClick={() => toast("Photo upload feature opened", "info")}
-                className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-white border-2 border-white shadow hover:bg-zinc-800"
+                type="button"
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute bottom-1 right-1 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-900 text-white border-2 border-white shadow hover:bg-zinc-800 transition-transform active:scale-95 z-10"
+                title="Upload Profile Picture"
               >
                 <Camera className="h-3.5 w-3.5" />
               </button>
@@ -263,7 +377,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3 border-t md:border-t-0 pt-4 md:pt-0 border-zinc-100">
             <Link href="/saved">
               <Button variant="outline" size="sm" className="gap-2">
-                <Heart className="h-4 w-4 text-red-600" /> Saved Places
+                <Heart className="h-4 w-4 text-red-600 fill-red-600" /> Saved Places ({savedPlaces.length})
               </Button>
             </Link>
           </div>
@@ -278,6 +392,17 @@ export default function ProfilePage() {
             <p className="text-xl font-extrabold text-zinc-900">{reviews.length}</p>
             <p className="text-xs font-medium text-zinc-500">Reviews Written</p>
           </div>
+          <button
+            type="button"
+            onClick={() => setActiveTab("saved")}
+            className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm hover:border-red-300 transition-colors"
+          >
+            <div className="flex justify-center mb-1 text-red-600">
+              <Heart className="h-5 w-5 fill-red-600 text-red-600" />
+            </div>
+            <p className="text-xl font-extrabold text-zinc-900">{savedPlaces.length}</p>
+            <p className="text-xs font-medium text-zinc-500">Saved Places</p>
+          </button>
           <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
             <div className="flex justify-center mb-1 text-amber-500">
               <ThumbsUp className="h-5 w-5" />
@@ -294,19 +419,13 @@ export default function ProfilePage() {
             </p>
             <p className="text-xs font-medium text-zinc-500">Badges Earned</p>
           </div>
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-center shadow-sm">
-            <div className="flex justify-center mb-1 text-blue-600">
-              <ImageIcon className="h-5 w-5" />
-            </div>
-            <p className="text-xl font-extrabold text-zinc-900">{reviews.length * 2}</p>
-            <p className="text-xs font-medium text-zinc-500">Food Photos</p>
-          </div>
         </div>
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 border-b border-zinc-200 mb-8 overflow-x-auto">
           {[
             { id: "reviews", label: `My Reviews (${reviews.length})`, icon: MessageSquare },
+            { id: "saved", label: `Saved Places (${savedPlaces.length})`, icon: Heart },
             { id: "badges", label: "Badges & Level", icon: Award },
             { id: "edit", label: "Edit Profile", icon: Edit2 },
             { id: "security", label: "Account Security", icon: Settings },
@@ -321,7 +440,7 @@ export default function ProfilePage() {
                   : "border-transparent text-zinc-500 hover:text-zinc-900",
               )}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon className={cn("h-4 w-4", tab.id === "saved" && activeTab === "saved" && "fill-red-600")} />
               {tab.label}
             </button>
           ))}
@@ -389,7 +508,35 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Tab 2: Badges & Gamification */}
+        {/* Tab 2: Saved Places */}
+        {activeTab === "saved" && (
+          <div>
+            {savedPlaces.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {savedPlaces.map((place) => (
+                  <RestaurantCard
+                    key={place.id}
+                    {...place}
+                    isSaved={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 bg-white p-12 text-center">
+                <UtensilsCrossed className="h-10 w-10 text-zinc-300 mb-3" />
+                <h3 className="text-lg font-bold text-zinc-900">No saved restaurants</h3>
+                <p className="mt-1 text-sm text-zinc-500">
+                  Click the heart icon on any restaurant card to bookmark your favourite dining spots.
+                </p>
+                <Link href="/places" className="mt-4">
+                  <Button variant="default" size="sm">Browse Restaurants</Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: Badges & Gamification */}
         {activeTab === "badges" && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {dinerBadges.map((badge) => (
@@ -435,15 +582,53 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Tab 3: Edit Profile */}
+        {/* Tab 4: Edit Profile */}
         {activeTab === "edit" && (
           <form
             onSubmit={handleSaveProfile}
             className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm flex flex-col gap-6 max-w-xl"
           >
-            <h2 className="text-lg font-bold text-zinc-900 border-b border-zinc-100 pb-3">
-              Profile Settings
+            <h2 className="text-lg font-bold text-zinc-900 border-b border-zinc-100 pb-3 flex items-center gap-2">
+              <UserIcon className="h-4 w-4 text-red-600" /> Profile Settings
             </h2>
+
+            {/* Profile Avatar Upload Picker */}
+            <div className="flex items-center gap-4 bg-zinc-50 p-4 rounded-xl border border-zinc-100">
+              <div className="relative h-16 w-16 shrink-0 rounded-xl overflow-hidden bg-zinc-200 flex items-center justify-center border border-zinc-300">
+                {avatarUrl ? (
+                  <Image src={avatarUrl} alt="Avatar Preview" fill className="object-cover" unoptimized />
+                ) : (
+                  <UserIcon className="h-8 w-8 text-zinc-400" />
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold text-zinc-900">Profile Picture</span>
+                <p className="text-xs text-zinc-500">JPG, PNG or WebP max 10MB</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => avatarInputRef.current?.click()}
+                  isLoading={isUploadingAvatar}
+                  className="w-fit text-xs gap-1.5 mt-1"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Upload Photo
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-zinc-700 uppercase">
+                Avatar Image URL (Optional)
+              </label>
+              <input
+                type="text"
+                value={avatarUrl}
+                onChange={(e) => setAvatarUrl(e.target.value)}
+                placeholder="https://example.com/my-photo.jpg"
+                className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
+              />
+            </div>
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-700 uppercase">
@@ -492,7 +677,7 @@ export default function ProfilePage() {
           </form>
         )}
 
-        {/* Tab 4: Security */}
+        {/* Tab 5: Security */}
         {activeTab === "security" && (
           <form
             onSubmit={handleChangePassword}
@@ -502,35 +687,49 @@ export default function ProfilePage() {
               <Lock className="h-4 w-4 text-red-600" /> Password & Security
             </h2>
 
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-700 uppercase">
-                Current Password
-              </label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                placeholder="Enter current password"
-                className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
-              />
-            </div>
+            {!hasPassword && (
+              <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 text-xs text-amber-800 flex items-start gap-2.5">
+                <Sparkles className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-900 mb-0.5">Google / OAuth Account</p>
+                  <p>
+                    Your account was accessed via Google. You can set a password below to enable standard password authentication for your account.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {hasPassword && (
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-zinc-700 uppercase">
+                  Current Password
+                </label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="Enter current password"
+                  className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
+                />
+              </div>
+            )}
 
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-700 uppercase">
-                New Password
+                {hasPassword ? "New Password" : "Create Account Password"}
               </label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Min. 8 characters"
+                placeholder="Min. 6 characters"
                 className="rounded-xl border border-zinc-200 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-red-500"
               />
             </div>
 
             <div className="flex justify-end pt-2">
               <Button type="submit" isLoading={isChangingPassword}>
-                <CheckCircle2 className="h-4 w-4" /> Update Password
+                <CheckCircle2 className="h-4 w-4" /> {hasPassword ? "Update Password" : "Set Password"}
               </Button>
             </div>
           </form>

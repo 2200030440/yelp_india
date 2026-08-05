@@ -23,6 +23,7 @@ export async function GET() {
         bio:          true,
         city:         true,
         role:         true,
+        passwordHash: true,
         createdAt:    true,
         _count: {
           select: {
@@ -76,7 +77,14 @@ export async function GET() {
     });
 
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
-    return NextResponse.json({ user });
+
+    const { passwordHash, ...userClean } = user;
+    return NextResponse.json({
+      user: {
+        ...userClean,
+        hasPassword: Boolean(passwordHash),
+      },
+    });
   } catch (error) {
     console.error("[users/me/GET]", error);
     return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500 });

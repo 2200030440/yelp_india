@@ -155,15 +155,16 @@ export interface Favorite {
 }
 
 export interface UserProfile {
-  id:        string;
-  name:      string | null;
-  email:     string;
-  image:     string | null;
-  bio:       string | null;
-  city:      string | null;
-  role:      string;
-  createdAt: string;
-  _count:    { reviews: number; favorites: number; photos: number };
-  reviews:   (Review & { place: Pick<PlaceCard, "id" | "name" | "slug" | "city"> })[];
-  favorites: Favorite[];
+  id:          string;
+  name:        string | null;
+  email:       string;
+  image:       string | null;
+  bio:         string | null;
+  city:        string | null;
+  role:        string;
+  hasPassword?: boolean;
+  createdAt:   string;
+  _count:      { reviews: number; favorites: number; photos: number };
+  reviews:     (Review & { place: Pick<PlaceCard, "id" | "name" | "slug" | "city"> })[];
+  favorites:   Favorite[];
 }
