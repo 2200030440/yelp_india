@@ -69,7 +69,6 @@ function PlacesContent() {
   const [isVegOnly, setIsVegOnly] = useState(false);
   const [maxDistanceKm, setMaxDistanceKm] = useState<number | null>(null);
   const [sortBy, setSortBy] = useState<string>("rating");
-  const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   useEffect(() => {
@@ -164,12 +163,6 @@ function PlacesContent() {
       return b.id.localeCompare(a.id);
     });
   }, [restaurants, selectedCategory, selectedCity, searchQuery, selectedPrice, minRating, isVegOnly, sortBy]);
-
-  const toggleBookmark = (slug: string) => {
-    setBookmarks((prev) =>
-      prev.includes(slug) ? prev.filter((s) => s !== slug) : [...prev, slug],
-    );
-  };
 
   const clearAllFilters = () => {
     setSelectedCategory("all");
@@ -457,8 +450,6 @@ function PlacesContent() {
                     <RestaurantCard
                       key={r.id}
                       {...r}
-                      isSaved={bookmarks.includes(r.slug)}
-                      onBookmarkToggle={toggleBookmark}
                     />
                   ))}
                 </div>
