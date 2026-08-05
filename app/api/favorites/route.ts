@@ -14,8 +14,18 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Find user by ID or email
+    const dbUser = await prisma.user.findFirst({
+      where: { OR: [{ id: session.user.id }, ...(session.user.email ? [{ email: session.user.email }] : [])] },
+      select: { id: true },
+    });
+
+    if (!dbUser) {
+      return NextResponse.json({ favorites: [] });
+    }
+
     const favorites = await prisma.favorite.findMany({
-      where:   { userId: session.user.id },
+      where:   { userId: dbUser.id },
       orderBy: { createdAt: "desc" },
       include: {
         place: {
@@ -61,10 +71,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Restaurant not found" }, { status: 404 });
     }
 
+    // Ensure user record exists in DB to prevent FK constraint error (favorites_userId_fkey)
+    let dbUserId = session.user.id;
+    const existingUser = await prisma.user.findUnique({
+      where: { id: dbUserId },
+      select: { id: true },
+    });
+
+    if (!existingUser) {
+      const email = session.user.email || `${session.user.id}@yelpindia.local`;
+      const createdUser = await prisma.user.upsert({
+        where: { email },
+        update: {},
+        create: {
+          id: dbUserId,
+          email,
+          name: session.user.name || email.split("@")[0],
+          image: session.user.image || null,
+          role: "USER",
+        },
+        select: { id: true },
+      });
+      dbUserId = createdUser.id;
+    }
+
     const favorite = await prisma.favorite.upsert({
-      where:  { userId_placeId: { userId: session.user.id, placeId: targetPlace.id } },
+      where:  { userId_placeId: { userId: dbUserId, placeId: targetPlace.id } },
       update: {},
-      create: { userId: session.user.id, placeId: targetPlace.id },
+      create: { userId: dbUserId, placeId: targetPlace.id },
     });
 
     return NextResponse.json({ favorite }, { status: 201 });
@@ -95,8 +129,16 @@ export async function DELETE(request: NextRequest) {
 
     const targetId = targetPlace ? targetPlace.id : placeId;
 
+    // Find user DB ID
+    const dbUser = await prisma.user.findFirst({
+      where: { OR: [{ id: session.user.id }, ...(session.user.email ? [{ email: session.user.email }] : [])] },
+      select: { id: true },
+    });
+
+    const userIdToDelete = dbUser ? dbUser.id : session.user.id;
+
     await prisma.favorite.deleteMany({
-      where: { userId: session.user.id, placeId: targetId },
+      where: { userId: userIdToDelete, placeId: targetId },
     });
 
     return NextResponse.json({ success: true });
