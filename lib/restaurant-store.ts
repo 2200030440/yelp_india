@@ -1,8 +1,10 @@
 // lib/restaurant-store.ts
 // Shared server-side dynamic place store type & helpers.
-// All place records & photos are stored in and queried directly from PostgreSQL / Prisma DB.
+// All place records & photos are stored in and queried directly from PostgreSQL / Prisma DB,
+// with DEFAULT_PLACES providing high-availability offline fallback.
 
 import { CITY_COORDINATES } from "@/constants";
+import { DEFAULT_PLACES } from "@/constants/default-places";
 
 export interface PlaceStoreItem {
   id: string;
@@ -24,8 +26,20 @@ export interface PlaceStoreItem {
   reviewCount: number;
   isVerified: boolean;
   isFeatured: boolean;
+  isVegOnly?: boolean;
   category: { name: string; slug: string; icon?: string };
   photos: { url: string; isPrimary?: boolean; caption?: string }[];
+  openingHours?: { dayOfWeek: string; openTime: string; closeTime: string; isClosed: boolean }[];
+  amenities?: { amenity: { id: string; name: string; slug: string; icon: string | null } }[];
+  reviews?: Array<{
+    id: string;
+    rating: number;
+    content: string;
+    createdAt: string;
+    likeCount: number;
+    user: { id: string; name: string | null; image: string | null };
+    photos: Array<{ id: string; url: string; caption?: string | null }>;
+  }>;
   createdAt: string;
   _count: { reviews: number; favorites?: number; photos?: number };
 }
@@ -35,15 +49,15 @@ const globalStore = globalThis as unknown as {
   dynamicPlacesStore?: PlaceStoreItem[];
 };
 
-if (!globalStore.dynamicPlacesStore) {
-  globalStore.dynamicPlacesStore = [];
+if (!globalStore.dynamicPlacesStore || globalStore.dynamicPlacesStore.length === 0) {
+  globalStore.dynamicPlacesStore = [...DEFAULT_PLACES];
 }
 
 export const dynamicPlaces = {
-  getAll: () => globalStore.dynamicPlacesStore ?? [],
+  getAll: () => globalStore.dynamicPlacesStore ?? DEFAULT_PLACES,
 
   getBySlug: (slug: string) => {
-    const list = globalStore.dynamicPlacesStore ?? [];
+    const list = globalStore.dynamicPlacesStore ?? DEFAULT_PLACES;
     return list.find((p) => p.slug.toLowerCase() === slug.toLowerCase()) || null;
   },
 
@@ -63,12 +77,12 @@ export const dynamicPlaces = {
     description?: string;
     photoUrl?: string;
   }): PlaceStoreItem => {
-    const list = globalStore.dynamicPlacesStore ?? [];
-    
+    const list = globalStore.dynamicPlacesStore ?? DEFAULT_PLACES;
+
     // Auto lookup state and lat/lng if not provided
     const cityKey = input.city.toLowerCase().trim();
     const cityData = CITY_COORDINATES[cityKey];
-    
+
     const state = input.state || cityData?.state || "India";
     const latitude = input.latitude ?? (cityData?.lat ? cityData.lat + (Math.random() - 0.5) * 0.05 : 20.5937);
     const longitude = input.longitude ?? (cityData?.lng ? cityData.lng + (Math.random() - 0.5) * 0.05 : 78.9629);
@@ -76,7 +90,7 @@ export const dynamicPlaces = {
     const baseSlug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
     const citySlug = input.city.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     let slug = `${baseSlug}-${citySlug}`;
-    
+
     // Ensure unique slug
     let counter = 1;
     while (list.some((p) => p.slug === slug)) {
@@ -108,6 +122,7 @@ export const dynamicPlaces = {
       reviewCount: 1,
       isVerified: true,
       isFeatured: true,
+      isVegOnly: input.name.toLowerCase().includes("veg") || input.name.toLowerCase().includes("bhavan"),
       category: { name: categoryName, slug: catSlug, icon: "UtensilsCrossed" },
       photos: photoUrl ? [{ url: photoUrl, isPrimary: true }] : [],
       createdAt: new Date().toISOString(),
@@ -119,9 +134,9 @@ export const dynamicPlaces = {
   },
 
   delete: (idOrSlug: string) => {
-    const list = globalStore.dynamicPlacesStore ?? [];
+    const list = globalStore.dynamicPlacesStore ?? DEFAULT_PLACES;
     globalStore.dynamicPlacesStore = list.filter(
-      (p) => p.id !== idOrSlug && p.slug !== idOrSlug
+      (p) => p.id !== idOrSlug && p.slug !== idOrSlug,
     );
     return true;
   },

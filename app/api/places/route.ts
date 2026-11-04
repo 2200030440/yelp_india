@@ -65,10 +65,19 @@ export async function GET(request: NextRequest) {
         prisma.place.count({ where }),
       ]);
 
-      if (dbPlaces.length > 0 || !dynamicPlaces.getAll().length) {
+      if (dbPlaces.length > 0) {
         return NextResponse.json({
           places: dbPlaces,
           pagination: { page, limit, total, pages: Math.ceil(total / limit) || 1 },
+        });
+      }
+
+      // If the database has records overall, this search filter legitimately had 0 matches
+      const totalDbPlaces = await prisma.place.count({ where: { deletedAt: null } }).catch(() => 0);
+      if (totalDbPlaces > 0) {
+        return NextResponse.json({
+          places: [],
+          pagination: { page, limit, total: 0, pages: 1 },
         });
       }
     } catch (dbErr) {

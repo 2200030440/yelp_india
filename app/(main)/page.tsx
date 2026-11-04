@@ -369,15 +369,29 @@ function RestaurantCard({ place }: { place: FeaturedPlace }) {
 function FeaturedSection() {
   const { location } = useLocationContext();
   const [places, setPlaces] = useState<FeaturedPlace[]>([]);
+  const [displayCity, setDisplayCity] = useState(location.city || "India");
 
   useEffect(() => {
     async function fetchFeatured() {
       try {
         const cityParam = location.city ? `?city=${encodeURIComponent(location.city)}&limit=6` : "?limit=6";
-        const res = await fetch(`/api/places${cityParam}`);
+        let res = await fetch(`/api/places${cityParam}`);
         if (res.ok) {
-          const data = await res.json();
-          const mapped = (data.places || []).map((p: { id?: string; name: string; slug: string; category?: { name?: string }; cuisine?: string; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
+          let data = await res.json();
+          let rawPlaces = data.places || [];
+
+          if (rawPlaces.length === 0 && location.city) {
+            const fallbackRes = await fetch("/api/places?limit=6&sort=rating");
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              rawPlaces = fallbackData.places || [];
+              setDisplayCity("India");
+            }
+          } else {
+            setDisplayCity(location.city || "India");
+          }
+
+          const mapped = rawPlaces.map((p: { id?: string; name: string; slug: string; category?: { name?: string }; cuisine?: string; city: string; averageRating?: number; rating?: number; reviewCount?: number; priceLevel?: number; photos?: Array<{ url?: string }>; isFeatured?: boolean }) => ({
             id: p.id || p.slug,
             name: p.name,
             slug: p.slug,
@@ -404,17 +418,17 @@ function FeaturedSection() {
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-extrabold text-zinc-900">
-            Popular Restaurants in {location.city || "India"}
+            Popular Restaurants in {displayCity}
           </h2>
           <p className="text-xs text-zinc-500 font-medium mt-0.5">
-            📍 Showing top dining spots near your detected location
+            📍 Showing top dining spots {displayCity === "India" ? "across India" : `in ${displayCity}`}
           </p>
         </div>
         <Link
           href={`/places?city=${encodeURIComponent(location.city || "all")}`}
           className="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1"
         >
-          View All ({location.city}) →
+          View All ({displayCity}) →
         </Link>
       </div>
 

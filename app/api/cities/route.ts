@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { dynamicPlaces } from "@/lib/restaurant-store";
 
 export async function GET() {
   try {
@@ -20,9 +21,26 @@ export async function GET() {
         count: c._count.id,
       }));
 
-    return NextResponse.json({ cities });
+    if (cities.length > 0) {
+      return NextResponse.json({ cities });
+    }
   } catch (err) {
-    console.error("[GET /api/cities error]", err);
-    return NextResponse.json({ cities: [] }, { status: 500 });
+    console.warn("[GET /api/cities DB warning]", err);
   }
+
+  // Fallback to dynamic places cities count
+  const cityMap = new Map<string, number>();
+  dynamicPlaces.getAll().forEach((p) => {
+    if (p.city) {
+      cityMap.set(p.city, (cityMap.get(p.city) || 0) + 1);
+    }
+  });
+
+  const fallbackCities = Array.from(cityMap.entries()).map(([name, count]) => ({
+    name,
+    count,
+  }));
+
+  return NextResponse.json({ cities: fallbackCities });
 }
+
