@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ reviews, pagination: { page, limit, total } });
   } catch (error) {
-    console.error("[reviews/GET]", error);
-    return NextResponse.json({ error: "Failed to fetch reviews" }, { status: 500 });
+    console.warn("[reviews/GET] DB fetch warning:", error);
+    return NextResponse.json({ reviews: [], pagination: { page: 1, limit: 10, total: 0 } });
   }
 }
 

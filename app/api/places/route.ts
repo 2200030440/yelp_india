@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
 
     if (city && city !== "all") {
       const cityLower = city.toLowerCase();
-      all = all.filter((p) => p.city.toLowerCase() === cityLower);
+      all = all.filter((p) => p.city.toLowerCase().includes(cityLower));
     }
 
     if (category && category !== "all") {

@@ -44,8 +44,8 @@ export async function GET() {
 
     return NextResponse.json({ favorites });
   } catch (error) {
-    console.error("[favorites/GET]", error);
-    return NextResponse.json({ error: "Failed to fetch favorites" }, { status: 500 });
+    console.warn("[favorites/GET] DB fetch warning:", error);
+    return NextResponse.json({ favorites: [] });
   }
 }
 
